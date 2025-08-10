@@ -305,259 +305,488 @@ def download_and_setup_online_font():
         return False, None
 
 
+def show_optimization_content_compact():
+    """智能优化内容 - 紧凑版"""
+    st.markdown("""
+    ## 🌿 智能优化系统
+
+    ### 🚀 核心功能
+    ✅ **双引擎优化**: SLSQP(快速) + NSGA-II(全面)  
+    ✅ **智能评分**: 规则评分 + ML机器学习评分  
+    ✅ **约束管理**: 质量标准 + 库存限制 + 成本控制  
+    ✅ **实时监控**: 进度跟踪 + 结果预览  
+
+    ### ⚙️ 算法对比
+    | 特性 | SLSQP | NSGA-II |
+    |------|--------|---------|
+    | 🎯 适用场景 | 单目标优化 | 多目标平衡 |
+    | ⏱️ 计算时间 | 几秒钟 | 2-5分钟 |
+    | 📊 结果类型 | 单一最优解 | 多个备选方案 |
+    | 🎓 难度 | 新手友好 | 专业用户 |
+
+    ### 💡 使用建议
+    🔰 **新手推荐**: 先用SLSQP快速测试，再用NSGA-II精细优化  
+    🏭 **生产环境**: 选择批次数少、库存充足的方案  
+    📈 **质量优先**: 关注ML评分>7分的高质量方案  
+    💰 **成本敏感**: 启用成本优化模式  
+    """)
+
+    # 快速操作区
+    st.markdown("### 🚀 快速操作")
+    quick_col1, quick_col2, quick_col3 = st.columns(3)
+    with quick_col1:
+        if st.button("📁 立即开始", key="quick_start_opt", use_container_width=True):
+            st.session_state.app_state = 'AWAITING_UPLOAD'
+            del st.session_state.active_card
+            st.rerun()
+    with quick_col2:
+        if st.button("📖 查看案例", key="view_case", use_container_width=True):
+            show_mini_case()
+    with quick_col3:
+        if st.button("❓ 帮助", key="help_opt", use_container_width=True):
+            show_mini_help()
+
+
+def show_calculation_content_compact():
+    """快速计算内容 - 紧凑版"""
+    st.markdown("""
+    ## ⚡ 快速计算引擎
+
+    ### 🏃‍♂️ 性能特色
+    ⚡ **向量化运算**: NumPy底层优化，批处理数据  
+    🧠 **智能缓存**: 避免重复计算，提升响应速度  
+    🔄 **并行处理**: 多核CPU协同，加速算法执行  
+    📊 **内存优化**: 智能管理，支持大数据集  
+
+    ### 📊 性能基准测试
+    | 数据规模 | SLSQP耗时 | NSGA-II耗时 | 推荐配置 |
+    |----------|-----------|-------------|----------|
+    | 100批次 | <1秒 | 30-60秒 | 入门级 |
+    | 500批次 | 1-3秒 | 2-5分钟 | 标准级 |
+    | 1000批次 | 3-8秒 | 5-10分钟 | 专业级 |
+
+    ### 🚀 加速秘诀
+    🎯 **数据预筛选**: 优先选择高质量批次  
+    ⚙️ **参数调优**: 合理设置算法参数  
+    🔧 **约束简化**: 避免过度复杂的限制条件  
+    💻 **硬件优化**: 多核CPU + 充足内存  
+    """)
+
+    # 性能测试工具
+    st.markdown("### 🔧 性能工具")
+    if st.button("🧪 一键性能测试", key="perf_test_compact", use_container_width=True):
+        run_quick_performance_test()
+
+
+def show_visualization_content_compact():
+    """可视化分析内容 - 紧凑版"""
+    st.markdown("""
+    ## 📊 可视化分析中心
+
+    ### 🎨 图表全家桶
+    📈 **数据概览**: 质量分布 + 成分散点 + Top排名  
+    🔍 **深度分析**: 箱线图 + 小提琴图 + 相关热力图  
+    🎯 **优化结果**: 配比饼图 + 用量柱图 + 达标对比  
+    📱 **交互功能**: 缩放平移 + 数据筛选 + 详情展示  
+
+    ### 🌍 显示模式
+    | 模式 | 优势 | 适用场景 |
+    |------|------|----------|
+    | 🔤 英文标签 | 兼容性好 | 推荐使用 |
+    | 🇨🇳 中文标签 | 直观易懂 | 字体支持时 |
+    | 🤖 智能检测 | 自动选择 | 懒人模式 |
+
+    ### 🎭 主题风格
+    🌞 **明亮模式**: 清爽白底，适合日间办公  
+    🌙 **暗色模式**: 深色护眼，适合夜间工作  
+    🌈 **彩色模式**: 炫彩渐变，个性化体验  
+    """)
+
+    # 可视化演示
+    st.markdown("### 🎬 实时演示")
+    demo_col1, demo_col2 = st.columns(2)
+    with demo_col1:
+        if st.button("📊 图表预览", key="chart_preview", use_container_width=True):
+            show_mini_chart()
+    with demo_col2:
+        if st.button("🎨 主题切换", key="theme_switch", use_container_width=True):
+            show_theme_selector()
+
+
+def show_precision_content_compact():
+    """精准配比内容 - 紧凑版"""
+    st.markdown("""
+    ## 🎯 精准配比系统
+
+    ### ⚖️ 精度等级
+    🎯 **标准精度**: ±0.1g，适合常规生产  
+    💎 **精密精度**: ±0.01g，适合实验研究  
+    🔬 **超精密**: ±0.001g，适合高端定制  
+
+    ### 🧮 计算引擎
+    📐 **数学模型**: 多目标约束优化  
+    🎛️ **求解算法**: SLSQP + NSGA-II双引擎  
+    🔍 **精度控制**: 四舍五入 + 误差补偿  
+    ✅ **结果验证**: 多重校验确保准确性  
+
+    ### 📋 输出内容
+    📊 **详细配比表**: 批次 + 用量 + 比例 + 质量  
+    🎯 **质量预期**: 成分含量 + 相似度 + 评分  
+    ⚠️ **风险提示**: 库存预警 + 成本分析  
+    🏭 **生产指导**: 操作步骤 + 质控要点  
+    """)
+
+    # 精度计算器
+    st.markdown("### 🧮 精度计算器")
+    calc_col1, calc_col2 = st.columns(2)
+    with calc_col1:
+        total_amount = st.number_input("目标产量(g)", value=1000.0, min_value=1.0, key="compact_amount")
+    with calc_col2:
+        precision = st.selectbox("精度", ["标准", "精密", "超精密"], key="compact_precision")
+
+    if st.button("💻 立即计算", key="calc_compact", use_container_width=True):
+        show_quick_calculation(total_amount, precision)
+
+
+# 辅助函数
+def show_mini_case():
+    """显示迷你案例"""
+    st.info("""
+    **📊 案例快览**: 45批次甘草提取物优化  
+    **🎯 目标**: 甘草苷≥4.5mg/g, 甘草酸≥18mg/g  
+    **✅ 结果**: 12批次配方，成本节省15%，质量超标准
+    """)
+
+
+def show_mini_help():
+    """显示迷你帮助"""
+    st.info("""
+    **❓ 常见问题速查**:  
+    • **优化失败** → 放宽约束条件，增加批次选择  
+    • **算法选择** → SLSQP快速测试，NSGA-II全面优化  
+    • **约束设置** → 参考数据统计的80-90%设置  
+    • **结果解读** → 优先选择批次数少、质量高的方案
+    """)
+
+
+def run_quick_performance_test():
+    """快速性能测试"""
+    with st.spinner("🔄 正在测试系统性能..."):
+        import time
+        start_time = time.time()
+
+        # 模拟计算负载
+        dummy_data = np.random.rand(100, 5)
+        for i in range(10):
+            result = np.dot(dummy_data, dummy_data.T)
+            np.linalg.inv(result + np.eye(100) * 0.1)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+    # 显示测试结果
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("系统响应", f"{elapsed_time * 1000:.1f}ms")
+    with col2:
+        if elapsed_time < 0.1:
+            st.metric("性能等级", "优秀", delta="快速")
+        elif elapsed_time < 0.5:
+            st.metric("性能等级", "良好", delta="正常")
+        else:
+            st.metric("性能等级", "一般", delta="较慢")
+    with col3:
+        throughput = 1000 / elapsed_time if elapsed_time > 0 else 0
+        st.metric("处理能力", f"{throughput:.0f} ops/s")
+
+def show_mini_chart():
+    """显示迷你图表"""
+    # 创建示例数据
+    sample_data = [4.2, 3.8, 4.5, 3.9, 4.1]
+    sample_labels = ['A', 'B', 'C', 'D', 'E']
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    bars = ax.bar(sample_labels, sample_data, color='skyblue', alpha=0.7, edgecolor='navy')
+    ax.set_title('质量评分示例图表', fontsize=14, pad=20)
+    ax.set_ylabel('评分', fontsize=12)
+    ax.set_xlabel('批次', fontsize=12)
+    ax.grid(True, alpha=0.3)
+
+    # 添加数值标签
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2., height + 0.05,
+                f'{height:.1f}', ha='center', va='bottom', fontweight='bold')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+
+
+def show_theme_selector():
+    """显示主题选择器"""
+    st.radio("选择主题:", ["🌞 明亮", "🌙 暗色", "🌈 彩色"], key="mini_theme")
+
+
+def show_quick_calculation(total_amount, precision_level):
+    """快速计算结果"""
+    precision_map = {"标准": 0.1, "精密": 0.01, "超精密": 0.001}
+    precision = precision_map[precision_level]
+    max_batches = int(total_amount / precision)
+
+    st.success("🎯 计算完成！")
+
+    result_col1, result_col2, result_col3 = st.columns(3)
+    with result_col1:
+        st.metric("总产量", f"{total_amount}g")
+    with result_col2:
+        st.metric("精度等级", f"±{precision}g")
+    with result_col3:
+        st.metric("最大批次数", f"{max_batches}个")
+
+    st.info(f"💡 在{precision_level}精度(±{precision}g)下，理论上最多可以使用{max_batches}个不同批次进行精确配比。")
+
+
+def show_card_details(card_type):
+    """在固定区域显示卡片详细信息 - 修复版"""
+    # 创建一个容器
+    with st.container():
+        # 添加关闭按钮
+        col1, col2 = st.columns([6, 1])
+        with col2:
+            if st.button("❌ 关闭", key="close_card"):
+                del st.session_state.active_card
+                st.rerun()
+
+        # 使用expander创建可折叠的内容区域
+        with st.expander("📋 详细信息", expanded=True):
+            if card_type == "optimization":
+                show_optimization_content_compact()
+            elif card_type == "calculation":
+                show_calculation_content_compact()
+            elif card_type == "visualization":
+                show_visualization_content_compact()
+            elif card_type == "precision":
+                show_precision_content_compact()
+
 def create_interactive_info_cards():
-    """创建可交互的信息卡片"""
+    """创建可交互的信息卡片 - 优化版布局"""
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         if st.button("🌿 智能优化", use_container_width=True, key="card_optimization"):
-            show_optimization_guide()
+            st.session_state.active_card = "optimization"
 
     with col2:
         if st.button("⚡ 快速计算", use_container_width=True, key="card_calculation"):
-            show_calculation_guide()
+            st.session_state.active_card = "calculation"
 
     with col3:
         if st.button("📊 可视化分析", use_container_width=True, key="card_visualization"):
-            show_visualization_guide()
+            st.session_state.active_card = "visualization"
 
     with col4:
         if st.button("🎯 精准配比", use_container_width=True, key="card_precision"):
-            show_precision_guide()
+            st.session_state.active_card = "precision"
+
+    # 在固定位置显示详细信息
+    if 'active_card' in st.session_state:
+        show_card_details(st.session_state.active_card)
 
 
-def show_optimization_guide():
-    """显示智能优化详细介绍"""
-    with st.expander("🌿 智能优化 - 详细指南", expanded=True):
-        st.markdown("""
-        ## 🤖 智能优化系统
+def show_optimization_content_compact():
+    """智能优化内容 - 紧凑版"""
+    st.markdown("""
+    ## 🌿 智能优化系统
 
-        ### 📋 核心功能
-        - **双引擎优化**：SLSQP单目标 + NSGA-II多目标
-        - **智能评分**：规则评分(0-5分) + ML评分(1-10分)
-        - **约束管理**：硬约束 + 软约束 + 目标引导
-        - **库存感知**：实时库存监控和预警
+    ### 🚀 核心功能
+    ✅ **双引擎优化**: SLSQP(快速) + NSGA-II(全面)  
+    ✅ **智能评分**: 规则评分 + ML机器学习评分  
+    ✅ **约束管理**: 质量标准 + 库存限制 + 成本控制  
+    ✅ **实时监控**: 进度跟踪 + 结果预览  
 
-        ### 🎯 优化目标
-        1. **质量最优化**：最大化混合后产品质量评分
-        2. **成本最小化**：在满足质量前提下降低成本
-        3. **相似度保证**：确保指纹图谱一致性
-        4. **批次数控制**：简化生产流程
+    ### ⚙️ 算法对比
+    | 特性 | SLSQP | NSGA-II |
+    |------|--------|---------|
+    | 🎯 适用场景 | 单目标优化 | 多目标平衡 |
+    | ⏱️ 计算时间 | 几秒钟 | 2-5分钟 |
+    | 📊 结果类型 | 单一最优解 | 多个备选方案 |
+    | 🎓 难度 | 新手友好 | 专业用户 |
 
-        ### ⚙️ 算法选择指南
+    ### 💡 使用建议
+    🔰 **新手推荐**: 先用SLSQP快速测试，再用NSGA-II精细优化  
+    🏭 **生产环境**: 选择批次数少、库存充足的方案  
+    📈 **质量优先**: 关注ML评分>7分的高质量方案  
+    💰 **成本敏感**: 启用成本优化模式  
 
-        | 算法 | 适用场景 | 计算时间 | 结果类型 |
-        |------|----------|----------|----------|
-        | **SLSQP** | 质量/成本单一目标 | 几秒钟 | 单一最优解 |
-        | **NSGA-II** | 多目标平衡决策 | 2-5分钟 | 帕累托前沿解集 |
+    ### 📋 操作步骤
+    1. **数据上传** → 选择Excel/CSV文件
+    2. **列映射** → 匹配甘草苷、甘草酸、相似度列
+    3. **批次选择** → 选择要参与混合的批次
+    4. **设置参数** → 配置优化目标和约束
+    5. **执行优化** → 获得最佳配比方案
+    """)
 
-        ### 📊 优化流程
-        1. **数据预处理** → 清洗、标准化、评分
-        2. **约束设置** → 质量标准、库存限制
-        3. **目标定义** → 单目标或多目标
-        4. **算法执行** → 迭代优化计算
-        5. **结果分析** → 可视化展示、配比建议
-
-        ### 💡 使用建议
-        - **新手**：建议从SLSQP开始，快速获得结果
-        - **专业用户**：使用NSGA-II获得多种平衡方案
-        - **生产环境**：优先考虑批次数少、库存充足的方案
-        """)
-
-        # 添加快速操作按钮
-        st.markdown("### 🚀 快速操作")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("📁 上传数据开始", key="quick_upload"):
-                st.session_state.app_state = 'AWAITING_UPLOAD'
-                st.rerun()
-        with col2:
-            if st.button("🎯 查看案例", key="show_case"):
-                show_optimization_case()
-        with col3:
-            if st.button("❓ 常见问题", key="show_faq"):
-                show_optimization_faq()
+    # 快速操作区
+    st.markdown("### 🚀 快速操作")
+    quick_col1, quick_col2, quick_col3 = st.columns(3)
+    with quick_col1:
+        if st.button("📁 立即开始", key="quick_start_opt", use_container_width=True):
+            st.session_state.app_state = 'AWAITING_UPLOAD'
+            if 'active_card' in st.session_state:
+                del st.session_state.active_card
+            st.rerun()
+    with quick_col2:
+        if st.button("📖 查看案例", key="view_case", use_container_width=True):
+            show_mini_case()
+    with quick_col3:
+        if st.button("❓ 帮助", key="help_opt", use_container_width=True):
+            show_mini_help()
 
 
-def show_calculation_guide():
-    """显示快速计算详细介绍"""
-    with st.expander("⚡ 快速计算 - 详细指南", expanded=True):
-        st.markdown("""
-        ## ⚡ 快速计算引擎
+def show_calculation_content_compact():
+    """快速计算内容 - 紧凑版"""
+    st.markdown("""
+    ## ⚡ 快速计算引擎
 
-        ### 🏃‍♂️ 高速计算特性
-        - **向量化运算**：NumPy底层优化，批量处理数据
-        - **缓存机制**：Streamlit缓存，避免重复计算
-        - **并行处理**：多核CPU并行优化算法
-        - **内存优化**：智能内存管理，支持大数据集
+    ### 🏃‍♂️ 性能特色
+    ⚡ **向量化运算**: NumPy底层优化，批处理数据  
+    🧠 **智能缓存**: 避免重复计算，提升响应速度  
+    🔄 **并行处理**: 多核CPU协同，加速算法执行  
+    📊 **内存优化**: 智能管理，支持大数据集  
 
-        ### ⏱️ 性能基准
+    ### 📊 性能基准测试
+    | 数据规模 | SLSQP耗时 | NSGA-II耗时 | 推荐配置 |
+    |----------|-----------|-------------|----------|
+    | 100批次 | <1秒 | 30-60秒 | 入门级 |
+    | 500批次 | 1-3秒 | 2-5分钟 | 标准级 |
+    | 1000批次 | 3-8秒 | 5-10分钟 | 专业级 |
 
-        | 数据规模 | SLSQP耗时 | NSGA-II耗时 | 内存占用 |
-        |----------|-----------|-------------|----------|
-        | 100批次 | <1秒 | 30-60秒 | <100MB |
-        | 500批次 | 1-3秒 | 2-5分钟 | <500MB |
-        | 1000批次 | 3-8秒 | 5-10分钟 | <1GB |
+    ### 🚀 加速秘诀
+    🎯 **数据预筛选**: 优先选择高质量批次  
+    ⚙️ **参数调优**: 合理设置算法参数  
+    🔧 **约束简化**: 避免过度复杂的限制条件  
+    💻 **硬件优化**: 多核CPU + 充足内存  
 
-        ### 🚀 加速技巧
-        1. **数据预筛选**：选择高质量批次进行优化
-        2. **约束简化**：避免过多复杂约束条件
-        3. **参数调优**：合理设置算法参数
-        4. **硬件优化**：使用多核CPU和充足内存
+    ### 🔧 计算流程
+    1. **数据预处理** → 清洗、标准化、向量化
+    2. **模型初始化** → 设置目标函数和约束
+    3. **迭代计算** → 高效数值优化算法
+    4. **结果验证** → 约束检查和质量评估
+    5. **输出格式化** → 生成详细配比方案
 
-        ### 📈 实时监控
-        - **进度显示**：实时进度条和状态更新
-        - **性能指标**：计算速度、内存使用情况
-        - **中断恢复**：支持计算中断和恢复
-        - **结果预览**：中间结果实时展示
-        """)
+    ### 📈 实时监控
+    - **进度显示**: 实时进度条和状态更新
+    - **性能指标**: 计算速度、内存使用情况  
+    - **中断恢复**: 支持计算中断和恢复
+    - **结果预览**: 中间结果实时展示
+    """)
 
-        # 性能测试工具
-        st.markdown("### 🔧 性能测试工具")
-        if st.button("🧪 运行性能测试", key="perf_test"):
-            run_performance_test()
-
-
-def show_visualization_guide():
-    """显示可视化分析详细介绍"""
-    with st.expander("📊 可视化分析 - 详细指南", expanded=True):
-        st.markdown("""
-        ## 📊 可视化分析系统
-
-        ### 🎨 图表类型
-
-        #### 📈 数据概览图表
-        - **质量评分分布**：直方图展示批次质量分布
-        - **成分含量散点图**：核心指标相关性分析
-        - **Top批次排名**：最优批次质量评分对比
-
-        #### 🔍 深度分析图表
-        - **箱线图**：成分含量分布和异常值检测
-        - **小提琴图**：数据密度分布可视化
-        - **相关性热力图**：成分间关系矩阵
-        - **成本效益散点图**：性价比分析
-
-        #### 🎯 优化结果图表
-        - **批次使用比例饼图**：配方构成可视化
-        - **用量分布柱状图**：各批次用量对比
-        - **达标情况对比图**：标准vs实际达成
-        - **库存使用率图**：库存消耗预警
-
-        ### 🌍 多语言支持
-        - **智能检测**：自动检测字体可用性
-        - **中文显示**：完整中文标签和说明
-        - **英文回退**：字体不可用时英文显示
-        - **字体诊断**：一键检测字体问题
-
-        ### 📱 交互功能
-        - **缩放平移**：支持图表缩放和平移
-        - **数据筛选**：交互式数据过滤
-        - **详情展示**：悬浮显示详细数值
-        - **导出功能**：PNG/PDF格式导出
-
-        ### 🎯 定制选项
-        - **主题切换**：明亮/暗色/彩色主题
-        - **图表大小**：自适应屏幕尺寸
-        - **配色方案**：多种专业配色
-        - **字体设置**：字体大小和样式调整
-        """)
-
-        # 可视化演示
-        st.markdown("### 🎭 可视化演示")
-        demo_col1, demo_col2 = st.columns(2)
-        with demo_col1:
-            if st.button("📊 查看图表示例", key="chart_demo"):
-                show_chart_demo()
-        with demo_col2:
-            if st.button("🎨 主题预览", key="theme_demo"):
-                show_theme_demo()
+    # 性能测试工具
+    st.markdown("### 🔧 性能工具")
+    if st.button("🧪 一键性能测试", key="perf_test_compact", use_container_width=True):
+        run_quick_performance_test()
 
 
-def show_precision_guide():
-    """显示精准配比详细介绍"""
-    with st.expander("🎯 精准配比 - 详细指南", expanded=True):
-        st.markdown("""
-        ## 🎯 精准配比系统
+def show_visualization_content_compact():
+    """可视化分析内容 - 紧凑版"""
+    st.markdown("""
+    ## 📊 可视化分析中心
 
-        ### ⚖️ 配比精度
-        - **小数点精度**：支持0.0001g级别精度控制
-        - **比例计算**：自动百分比和重量换算
-        - **误差控制**：配比误差<0.1%的高精度
-        - **总量保证**：确保总重量完全一致
+    ### 🎨 图表全家桶
+    📈 **数据概览**: 质量分布 + 成分散点 + Top排名  
+    🔍 **深度分析**: 箱线图 + 小提琴图 + 相关热力图  
+    🎯 **优化结果**: 配比饼图 + 用量柱图 + 达标对比  
+    📱 **交互功能**: 缩放平移 + 数据筛选 + 详情展示  
 
-        ### 📐 计算方法
+    ### 🌍 显示模式
+    | 模式 | 优势 | 适用场景 |
+    |------|------|----------|
+    | 🔤 英文标签 | 兼容性好 | 推荐使用 |
+    | 🇨🇳 中文标签 | 直观易懂 | 字体支持时 |
+    | 🤖 智能检测 | 自动选择 | 懒人模式 |
 
-        #### 🔢 数学模型
-        ```
-        目标函数：minimize/maximize f(x₁,x₂,...,xₙ)
-        约束条件：
-        - ∑xᵢ = 1 (比例和为1)
-        - 质量约束：gⱼ(x) ≥ 标准值
-        - 库存约束：xᵢ × 总量 ≤ 库存ᵢ
-        - 相似度约束：sim(x) ≥ 阈值
-        ```
+    ### 🎭 主题风格
+    🌞 **明亮模式**: 清爽白底，适合日间办公  
+    🌙 **暗色模式**: 深色护眼，适合夜间工作  
+    🌈 **彩色模式**: 炫彩渐变，个性化体验  
 
-        #### 🎛️ 优化算法
-        - **SLSQP**：序列二次规划，适合连续优化
-        - **NSGA-II**：非支配排序遗传算法，多目标优化
-        - **约束处理**：拉格朗日乘数法和罚函数法
-        - **收敛判断**：梯度范数和函数值变化
+    ### 📊 可用图表类型
+    - **质量分析**: 评分分布直方图、Top批次排名
+    - **成分分析**: 散点图、相关性热力图、箱线图
+    - **成本分析**: 成本效益散点图、性价比排名
+    - **库存分析**: 库存分布图、使用率预警图
+    - **优化结果**: 配比饼图、用量柱图、达标对比
 
-        ### 📊 配比输出
+    ### 🛠️ 导出功能
+    - **PNG格式**: 高清图片导出
+    - **PDF报告**: 完整分析报告
+    - **Excel数据**: 详细数据表格
+    """)
 
-        #### 📋 详细配比表
-        | 批次编号 | 推荐用量(g) | 使用比例(%) | 质量评分 | 库存消耗(%) |
-        |----------|-------------|-------------|----------|-------------|
-        | 批次_001 | 156.75 | 15.68% | 4.23 | 12.5% |
-        | 批次_018 | 243.22 | 24.32% | 4.45 | 18.7% |
-        | ... | ... | ... | ... | ... |
+    # 可视化演示
+    st.markdown("### 🎬 实时演示")
+    demo_col1, demo_col2 = st.columns(2)
+    with demo_col1:
+        if st.button("📊 图表预览", key="chart_preview", use_container_width=True):
+            show_mini_chart()
+    with demo_col2:
+        if st.button("🎨 主题切换", key="theme_switch", use_container_width=True):
+            show_theme_selector()
 
-        #### 🎯 质量预期
-        - **混合后甘草苷含量**：5.12 ± 0.03 mg/g
-        - **混合后甘草酸含量**：19.8 ± 0.05 mg/g
-        - **指纹图谱相似度**：0.943 ± 0.002
-        - **综合质量评分**：4.38/5.0
 
-        ### ⚠️ 质量控制
+def show_precision_content_compact():
+    """精准配比内容 - 紧凑版"""
+    st.markdown("""
+    ## 🎯 精准配比系统
 
-        #### 🔍 多重验证
-        1. **数学验证**：约束条件满足性检查
-        2. **物理验证**：库存量和可行性验证
-        3. **质量验证**：预期质量标准达成验证
-        4. **成本验证**：成本效益合理性验证
+    ### ⚖️ 精度等级
+    🎯 **标准精度**: ±0.1g，适合常规生产  
+    💎 **精密精度**: ±0.01g，适合实验研究  
+    🔬 **超精密**: ±0.001g，适合高端定制  
 
-        #### 📈 误差分析
-        - **配比误差**：±0.01% (四舍五入误差)
-        - **质量预测误差**：±2% (基于历史数据)
-        - **成本估算误差**：±5% (市场价格波动)
+    ### 🧮 计算引擎
+    📐 **数学模型**: 多目标约束优化  
+    🎛️ **求解算法**: SLSQP + NSGA-II双引擎  
+    🔍 **精度控制**: 四舍五入 + 误差补偿  
+    ✅ **结果验证**: 多重校验确保准确性  
 
-        ### 🏭 生产指导
+    ### 📋 输出内容
+    📊 **详细配比表**: 批次 + 用量 + 比例 + 质量  
+    🎯 **质量预期**: 成分含量 + 相似度 + 评分  
+    ⚠️ **风险提示**: 库存预警 + 成本分析  
+    🏭 **生产指导**: 操作步骤 + 质控要点  
 
-        #### 📝 操作规程
-        1. **原料准备**：按配比表准备各批次原料
-        2. **称量控制**：使用精密天平(±0.1g)
-        3. **混合顺序**：按质量评分从高到低混合
-        4. **过程监控**：记录实际用量和混合时间
-        5. **质量检测**：混合后抽样检测关键指标
+    ### 🔬 质量保证
+    - **数学验证**: 约束条件满足性检查
+    - **物理验证**: 库存量和可行性验证  
+    - **质量验证**: 预期质量标准达成验证
+    - **成本验证**: 成本效益合理性验证
 
-        #### 🔄 批次追溯
-        - **原料批次记录**：完整的原料来源信息
-        - **配比执行记录**：实际使用量和偏差记录
-        - **质量检测记录**：混合后质量检测数据
-        - **异常处理记录**：配比调整和质量问题处理
-        """)
+    ### 📈 配比精度控制
+    | 精度等级 | 误差范围 | 适用场景 | 推荐用途 |
+    |----------|----------|----------|----------|
+    | 标准 | ±0.1g | 工业生产 | 大批量生产 |
+    | 精密 | ±0.01g | 实验室 | 研发测试 |
+    | 超精密 | ±0.001g | 高端定制 | 特殊需求 |
 
-        # 精度计算器
-        st.markdown("### 🧮 精度计算器")
-        calculator_col1, calculator_col2 = st.columns(2)
-        with calculator_col1:
-            total_amount = st.number_input("总产量(克)", value=1000.0, min_value=1.0)
-        with calculator_col2:
-            precision_level = st.selectbox("精度等级", ["标准(0.1g)", "精密(0.01g)", "超精密(0.001g)"])
+    ### 🏭 生产应用
+    - **称量精度**: 根据精度等级选择合适天平
+    - **混合顺序**: 按质量评分从高到低混合
+    - **质量控制**: 关键控制点监控
+    - **批次追溯**: 完整的生产记录链
+    """)
 
-        if st.button("💻 计算配比精度", key="calc_precision"):
-            show_precision_calculator(total_amount, precision_level)
+    # 精度计算器
+    st.markdown("### 🧮 精度计算器")
+    calc_col1, calc_col2 = st.columns(2)
+    with calc_col1:
+        total_amount = st.number_input("目标产量(g)", value=1000.0, min_value=1.0, key="compact_amount")
+    with calc_col2:
+        precision = st.selectbox("精度", ["标准", "精密", "超精密"], key="compact_precision")
 
+    if st.button("💻 立即计算", key="calc_compact", use_container_width=True):
+        show_quick_calculation(total_amount, precision)
 
 def show_optimization_case():
     """显示优化案例"""
@@ -1108,98 +1337,626 @@ if 'drug_type' not in st.session_state:
 
 # 在现有的 apply_custom_css() 函数中添加更多动画
 def apply_custom_css():
-    """应用自定义CSS样式 - 增强动画版"""
+    """应用自定义CSS样式 - 超级动画增强版"""
     st.markdown("""
     <style>
-    /* 原有样式保持不变，新增以下动画效果 */
+    /* 导入Google字体 */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-    /* 加载动画 */
+    /* 全局动画变量 */
+    :root {
+        --primary-color: #4CAF50;
+        --secondary-color: #66BB6A;
+        --accent-color: #81C784;
+        --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --gradient-2: linear-gradient(45deg, #4CAF50, #66BB6A);
+        --shadow-soft: 0 4px 20px rgba(0,0,0,0.1);
+        --shadow-medium: 0 8px 30px rgba(0,0,0,0.15);
+        --shadow-strong: 0 15px 40px rgba(0,0,0,0.2);
+    }
+
+    /* 平滑滚动 */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* 页面容器动画 */
+    .stApp {
+        animation: pageLoad 1s ease-out;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @keyframes pageLoad {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 增强的渐变动画 */
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+
     @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
+        0% { transform: scale(1); box-shadow: var(--shadow-soft); }
+        50% { transform: scale(1.05); box-shadow: var(--shadow-medium); }
+        100% { transform: scale(1); box-shadow: var(--shadow-soft); }
     }
 
     @keyframes slideInLeft {
-        from { transform: translateX(-100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from { 
+            transform: translateX(-100%) rotate(-5deg); 
+            opacity: 0; 
+        }
+        to { 
+            transform: translateX(0) rotate(0deg); 
+            opacity: 1; 
+        }
     }
 
     @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from { 
+            transform: translateX(100%) rotate(5deg); 
+            opacity: 0; 
+        }
+        to { 
+            transform: translateX(0) rotate(0deg); 
+            opacity: 1; 
+        }
     }
 
-    @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-        40% { transform: translateY(-10px); }
-        60% { transform: translateY(-5px); }
+    @keyframes slideInUp {
+        from { 
+            transform: translateY(100%) scale(0.8); 
+            opacity: 0; 
+        }
+        to { 
+            transform: translateY(0) scale(1); 
+            opacity: 1; 
+        }
     }
 
-    /* 悬浮效果增强 */
+    @keyframes bounceIn {
+        0% { transform: scale(0.3); opacity: 0; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+        70% { transform: scale(0.9); opacity: 0.9; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    @keyframes glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.3); }
+        50% { box-shadow: 0 0 30px rgba(76, 175, 80, 0.6); }
+    }
+
+    /* 主标题动画增强 */
+    .main-title {
+        background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50, #66BB6A);
+        background-size: 400% 400%;
+        animation: gradientShift 4s ease infinite, float 3s ease-in-out infinite;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* 卡片动画超级增强 */
     .metric-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 1px solid #e3e6ea;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 0.5rem 0;
+        box-shadow: var(--shadow-soft);
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.5s;
+    }
+
+    .metric-card:hover::before {
+        left: 100%;
     }
 
     .metric-card:hover {
-        transform: translateY(-8px) scale(1.02);
-        box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-        border: 2px solid #4CAF50;
+        transform: translateY(-12px) scale(1.03);
+        box-shadow: var(--shadow-strong);
+        border: 2px solid var(--primary-color);
+        animation: glow 2s ease-in-out infinite;
     }
 
-    /* 按钮点击效果 */
-    .stButton > button:active {
-        transform: scale(0.95);
+    .metric-card:active {
+        transform: translateY(-8px) scale(1.01);
         transition: transform 0.1s ease;
     }
 
-    /* 数据表格行悬浮效果 */
-    .stDataFrame tbody tr:hover {
-        background-color: rgba(76, 175, 80, 0.1);
-        transform: scale(1.01);
-        transition: all 0.3s ease;
+    /* 按钮超级动画 */
+    .stButton > button {
+        background: var(--gradient-2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        box-shadow: var(--shadow-soft);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(255,255,255,0.3);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.3s, height 0.3s;
+    }
+
+    .stButton > button:hover::before {
+        width: 200px;
+        height: 200px;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: var(--shadow-medium);
+        animation: pulse 1s ease-in-out infinite;
+    }
+
+    .stButton > button:active {
+        transform: translateY(0) scale(0.98);
+        animation: none;
     }
 
     /* 进度条动画 */
     .stProgress > div > div > div {
-        animation: pulse 2s infinite;
+        background: var(--gradient-2);
+        animation: progressPulse 2s ease-in-out infinite;
     }
 
-    /* 侧边栏滑入动画 */
+    @keyframes progressPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    /* 侧边栏动画 */
     .css-1d391kg {
-        animation: slideInLeft 0.6s ease-out;
+        animation: slideInLeft 0.8s ease-out;
+        background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     }
 
     /* 主内容区动画 */
     .main .block-container {
-        animation: fadeInUp 0.8s ease-out;
+        animation: slideInUp 0.8s ease-out;
     }
 
-    /* 成功消息弹跳动画 */
-    .success-message {
-        animation: bounce 1s ease-in-out;
+    /* 成功消息动画 */
+    .stAlert {
+        animation: bounceIn 0.6s ease-out;
+        border-left: 4px solid var(--primary-color);
     }
 
-    /* 图表容器动画 */
-    .stPlotlyChart, .element-container {
-        animation: fadeInUp 0.6s ease-out;
+    /* 数据表格动画 */
+    .stDataFrame {
+        animation: slideInUp 0.6s ease-out;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
     }
 
-    /* 加载状态旋转动画 */
+    .stDataFrame tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .stDataFrame tbody tr:hover {
+        background: linear-gradient(90deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+    }
+
+    /* 选择框动画 */
+    .stSelectbox > div > div {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .stSelectbox > div > div:focus-within {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        transform: scale(1.02);
+    }
+
+    /* 文本输入框动画 */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: 2px solid #e3e6ea;
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        transform: scale(1.02);
+    }
+
+    /* 加载动画 */
+    .stSpinner {
+        animation: spin 1s linear infinite;
+    }
+
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
 
-    .loading-spinner {
-        animation: spin 1s linear infinite;
+    /* 图表容器动画 */
+    .stPlotlyChart {
+        animation: slideInUp 0.8s ease-out;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+    }
+
+    /* Expander动画 */
+    .streamlit-expanderHeader {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+    }
+
+    .streamlit-expanderHeader:hover {
+        background: rgba(76, 175, 80, 0.1);
+        transform: scale(1.01);
+    }
+
+    /* 标签页动画 */
+    .stTabs [data-baseweb="tab-list"] {
+        background: linear-gradient(90deg, #f8f9fa, #ffffff);
+        border-radius: 12px;
+        padding: 4px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: var(--gradient-2);
+        color: white;
+        transform: scale(1.05);
+    }
+
+    /* 滑块动画 */
+    .stSlider {
+        padding: 1rem 0;
+    }
+
+    .stSlider > div > div > div > div {
+        transition: all 0.3s ease;
+    }
+
+    .stSlider:hover > div > div > div > div {
+        transform: scale(1.1);
+    }
+
+    /* 多选框动画 */
+    .stMultiSelect > div > div {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .stMultiSelect > div > div:focus-within {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    }
+
+    /* 自定义成功/警告/错误消息动画 */
+    .success-message {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        border: 1px solid #c3e6cb;
+        border-left: 4px solid #28a745;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        animation: bounceIn 0.6s ease-out;
+    }
+
+    .warning-message {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        border: 1px solid #ffeaa7;
+        border-left: 4px solid #ffc107;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        animation: shake 0.6s ease-out;
+    }
+
+    .error-message {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        border: 1px solid #f5c6cb;
+        border-left: 4px solid #dc3545;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        animation: shake 0.8s ease-out;
+    }
+
+    /* 步骤指示器动画 */
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        animation: slideInLeft 0.6s ease-out;
+    }
+
+    .step-number {
+        background: var(--gradient-2);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 1rem;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .step-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    /* 响应式动画 */
+    @media (max-width: 768px) {
+        .metric-card {
+            animation: slideInUp 0.4s ease-out;
+        }
+
+        .main-title {
+            animation: gradientShift 3s ease infinite;
+        }
+    }
+
+    /* 暗色模式适配 */
+    @media (prefers-color-scheme: dark) {
+        .metric-card {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            border-color: #4a5568;
+            color: #e2e8f0;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
 
 
+def create_animated_header(title, subtitle="", icon="🌿"):
+    """创建带动画的标题组件"""
+    st.markdown(f"""
+    <div style="text-align: center; margin: 2rem 0; animation: slideInUp 0.8s ease-out;">
+        <div style="font-size: 4rem; animation: float 3s ease-in-out infinite;">{icon}</div>
+        <h1 style="
+            background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 1rem 0;
+        ">{title}</h1>
+        {f'<p style="font-size: 1.2rem; color: #666; animation: slideInUp 1s ease-out;">{subtitle}</p>' if subtitle else ''}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def create_floating_card(content, delay=0):
+    """创建浮动卡片组件"""
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin: 1rem 0;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        animation: slideInUp 0.8s ease-out {delay}s both, float 6s ease-in-out infinite;
+        transition: all 0.3s ease;
+        border: 1px solid #e3e6ea;
+    " onmouseover="this.style.transform='translateY(-10px) scale(1.02)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.15)'"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.1)'">
+        {content}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def create_progress_ring(progress, size=120, stroke_width=8):
+    """创建环形进度条"""
+    radius = (size - stroke_width) / 2
+    circumference = 2 * 3.14159 * radius
+    stroke_dasharray = circumference
+    stroke_dashoffset = circumference - (progress / 100) * circumference
+
+    return f"""
+    <div style="display: flex; justify-content: center; margin: 2rem 0;">
+        <svg width="{size}" height="{size}" style="animation: pulse 2s ease-in-out infinite;">
+            <circle
+                cx="{size / 2}"
+                cy="{size / 2}"
+                r="{radius}"
+                fill="none"
+                stroke="#e3e6ea"
+                stroke-width="{stroke_width}"
+            />
+            <circle
+                cx="{size / 2}"
+                cy="{size / 2}"
+                r="{radius}"
+                fill="none"
+                stroke="url(#gradient)"
+                stroke-width="{stroke_width}"
+                stroke-linecap="round"
+                stroke-dasharray="{stroke_dasharray}"
+                stroke-dashoffset="{stroke_dashoffset}"
+                transform="rotate(-90 {size / 2} {size / 2})"
+                style="animation: progressRing 2s ease-in-out;"
+            />
+            <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#4CAF50"/>
+                    <stop offset="100%" style="stop-color:#66BB6A"/>
+                </linearGradient>
+            </defs>
+            <text x="50%" y="50%" text-anchor="middle" dy=".3em" 
+                  style="font-size: 1.5rem; font-weight: bold; fill: #4CAF50;">
+                {int(progress)}%
+            </text>
+        </svg>
+    </div>
+    <style>
+        @keyframes progressRing {{
+            from {{ stroke-dashoffset: {circumference}; }}
+            to {{ stroke-dashoffset: {stroke_dashoffset}; }}
+        }}
+    </style>
+    """
+
+
+def create_animated_metric(label, value, delta=None, icon="📊"):
+    """创建动画指标卡片"""
+    delta_html = ""
+    if delta:
+        delta_color = "#28a745" if delta >= 0 else "#dc3545"
+        delta_symbol = "▲" if delta >= 0 else "▼"
+        delta_html = f"""
+        <div style="
+            color: {delta_color}; 
+            font-size: 0.9rem; 
+            animation: pulse 2s ease-in-out infinite;
+        ">
+            {delta_symbol} {abs(delta)}
+        </div>
+        """
+
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        animation: bounceIn 0.8s ease-out;
+        transition: all 0.3s ease;
+        border: 1px solid #e3e6ea;
+        margin: 0.5rem;
+    " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 8px 30px rgba(0,0,0,0.15)'"
+       onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(0,0,0,0.1)'">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem; animation: float 3s ease-in-out infinite;">
+            {icon}
+        </div>
+        <div style="font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin-bottom: 0.5rem;">
+            {value}
+        </div>
+        <div style="color: #666; font-size: 0.9rem;">
+            {label}
+        </div>
+        {delta_html}
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def create_loading_animation(text="加载中..."):
+    """创建自定义加载动画"""
+    st.markdown(f"""
+    <div style="text-align: center; margin: 2rem 0;">
+        <div style="
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        "></div>
+        <p style="
+            color: #666;
+            font-size: 1.1rem;
+            animation: pulse 2s ease-in-out infinite;
+        ">{text}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def add_page_transition():
+    """添加页面切换动画"""
+    st.markdown("""
+    <script>
+    // 页面切换动画
+    function addPageTransition() {
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) {
+                            node.style.animation = 'slideInUp 0.6s ease-out';
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    // 页面加载完成后执行
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addPageTransition);
+    } else {
+        addPageTransition();
+    }
+    </script>
+    """, unsafe_allow_html=True)
+
+
 # 调用CSS应用函数
 apply_custom_css()
+add_page_transition()
 
 
 def create_realtime_preview():
@@ -1537,9 +2294,14 @@ def create_status_indicator(status, message, icon=""):
         </div>
         """, unsafe_allow_html=True)
 
-# 主标题
-st.markdown('<h1 class="main-title">🌿 中药多组分智能均化软件</h1>', unsafe_allow_html=True)
 
+# 主标题
+# 替换原有的主标题
+create_animated_header(
+    "中药多组分智能均化软件",
+    "专业的批次混合优化解决方案",
+    "🌿"
+)
 # 添加功能卡片
 create_interactive_info_cards()
 st.markdown("<br>", unsafe_allow_html=True)
