@@ -23,7 +23,10 @@ import requests
 import json
 import sys
 import warnings
-
+import io
+from fpdf import FPDF
+import matplotlib.pyplot as plt
+import os
 
 # 抑制兼容性警告
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -2113,50 +2116,88 @@ def create_export_functionality():
     """创建数据导出功能"""
     st.markdown("### 📋 结果导出")
 
-    col1, col2, col3 = st.columns(3)
+    # 只有在有结果时才显示导出按钮
+    if 'optimization_result' in st.session_state:
+        col1, col2, col3 = st.columns(3)
 
-    with col1:
-        if st.button("📊 导出Excel报告", use_container_width=True):
-            export_excel_report()
+        with col1:
+            # Excel导出功能无需修改
+            if st.button("📊 导出Excel报告", use_container_width=True):
+                export_excel_report()
 
-    with col2:
-        if st.button("📈 导出图表", use_container_width=True):
-            export_charts()
+        with col2:
+            # 图表导出功能无需修改
+            if st.button("📈 导出图表", use_container_width=True):
+                export_charts()
 
-    with col3:
-        if st.button("📄 生成PDF报告", use_container_width=True):
-            generate_pdf_report()
+        with col3:
+            # PDF按钮现在将调用新函数
+            if st.button("📄 生成PDF报告", use_container_width=True, type="primary"):
+                generate_pdf_report()
+    else:
+        st.info("请先成功运行一次优化，然后才能导出报告。")
 
 
 def export_excel_report():
-    """导出Excel格式的完整报告"""
+    """导出Excel格式的完整报告 (已修复ValueError)"""
     import io
+
+    # Check if results exist to avoid errors
+    if 'optimization_result' not in st.session_state:
+        st.error("❌ Please run an optimization successfully before exporting.")
+        return
 
     buffer = io.BytesIO()
 
-    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        # 导出原始数据
-        if 'df_processed' in st.session_state:
-            st.session_state.df_processed.to_excel(writer, sheet_name='原始数据', index=True)
+    with st.spinner('Generating Excel report...'):
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            # Sheet 1: Original Processed Data
+            if 'df_processed' in st.session_state:
+                st.session_state.df_processed.to_excel(writer, sheet_name='Processed_Data', index=True)
 
-        # 导出优化结果
-        if 'optimization_result' in st.session_state:
-            result_df = pd.DataFrame(st.session_state.optimization_result)
-            result_df.to_excel(writer, sheet_name='优化结果', index=False)
+            # Sheet 2: Optimization Result (The Recipe)
+            # --- THIS IS THE CORRECTED LOGIC ---
+            if 'optimization_result' in st.session_state:
+                # Extract the necessary data from the session state
+                result_obj = st.session_state.optimization_result.get('result')
+                selected_data = st.session_state.optimization_result.get('selected_data')
+                total_mix_amount = st.session_state.get('total_mix_amount', 1) # Default to 1 to prevent division by zero
 
-        # 导出统计分析
-        if 'df_processed' in st.session_state:
-            stats_df = st.session_state.df_processed.describe()
-            stats_df.to_excel(writer, sheet_name='统计分析')
+                if result_obj and selected_data is not None:
+                    # Create a clean DataFrame for the recipe
+                    proportions = result_obj.get('x', [])
+                    weights = proportions * total_mix_amount
+
+                    # Build the result DataFrame
+                    recipe_df = pd.DataFrame({
+                        'Batch_ID': selected_data.index,
+                        'Recommended_Weight_g': weights,
+                        'Proportion_Percent': proportions * 100,
+                        'Rubric_Score': selected_data['Rubric_Score'],
+                        'ML_Score': selected_data.get('ML_Score', None) # Safely get ML_Score
+                    })
+
+                    # Filter for only the batches that are actually used in the recipe
+                    final_recipe_df = recipe_df[recipe_df['Recommended_Weight_g'] > 0.001].copy()
+                    final_recipe_df.reset_index(drop=True, inplace=True)
+
+                    # Write the clean recipe DataFrame to the Excel sheet
+                    final_recipe_df.to_excel(writer, sheet_name='Optimization_Result_Recipe', index=False)
+
+            # Sheet 3: Statistical Analysis
+            if 'df_processed' in st.session_state:
+                stats_df = st.session_state.df_processed.describe()
+                stats_df.to_excel(writer, sheet_name='Statistical_Analysis')
 
     buffer.seek(0)
 
     st.download_button(
-        label="📥 下载Excel报告",
+        label="📥 Download Excel Report",
         data=buffer.getvalue(),
-        file_name=f"中药均化分析报告_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        file_name=f"Homogenization_Analysis_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+    st.success("✅ Excel report has been generated successfully!")
 
 
 def add_keyboard_shortcuts():
@@ -2298,7 +2339,7 @@ def create_status_indicator(status, message, icon=""):
 # 主标题
 # 替换原有的主标题
 create_animated_header(
-    "中药多组分智能均化软件",
+    "药络智控——中药多组分智能均化软件",
     "专业的批次混合优化解决方案",
     "🌿"
 )
@@ -2920,20 +2961,146 @@ def export_charts():
         st.error(f"图表导出失败: {e}")
 
 
-
 def generate_pdf_report():
-    """生成PDF报告功能"""
-    try:
-        st.info("PDF报告生成功能正在开发中...")
-        st.markdown("""
-        **PDF报告将包含：**
-        - 数据概览统计
-        - 优化结果详情
-        - 可视化图表
-        - 批次配比建议
-        """)
-    except Exception as e:
-        st.error(f"PDF生成失败: {e}")
+    """生成包含AI分析的完整PDF报告 (已修复字体和样式错误)"""
+    if 'optimization_result' not in st.session_state or not isinstance(st.session_state.optimization_result, dict):
+        st.error("❌ 请先成功运行一次优化计算，再生成报告。")
+        return
+
+    result = st.session_state.optimization_result['result']
+    selected_data = st.session_state.optimization_result['selected_data']
+
+    with st.spinner('报告生成中，请稍候... (AI分析可能需要一些时间)'):
+        try:
+            # --- AI 分析模块 (保持不变) ---
+            ai_summary = "AI analysis could not be performed."
+            if st.session_state.get('github_api_key'):
+                st.info("正在调用AI进行智能分析...")
+                report_context = f"""
+                Optimization Mode: {st.session_state.get('optimization_mode', 'N/A')}
+                Target Mix Amount: {st.session_state.get('total_mix_amount', 'N/A')}g
+                Final Score/Cost: {result.get('fun') if result else 'N/A'}
+                Number of Batches Used: {len(selected_data[result.get('x', []) > 0.001]) if result else 'N/A'}
+                Recipe: {selected_data[result.get('x', []) > 0.001].index.tolist() if result else 'N/A'}
+                """
+                system_prompt = f"""You are an expert data analyst for traditional Chinese medicine manufacturing. Your task is to provide a concise, professional summary and recommendation based on the following optimization result data. The language of your response must be English.
+                Your summary should include:
+                1. A brief overview of the optimization outcome.
+                2. Key positive findings.
+                3. Potential considerations or risks.
+                4. A concluding recommendation.
+                Here is the data:
+                {report_context}
+                """
+                ai_response_raw = call_github_models_api("Summarize these results for a formal report.", system_prompt,
+                                                         st.session_state.github_api_key)
+                if "❌" not in ai_response_raw:
+                    ai_summary = ai_response_raw.replace("🤖 **AI助手回复：**\n\n", "")
+            else:
+                ai_summary = "AI analysis was skipped because no API key was provided. Please enter an API key in the sidebar to enable this feature."
+
+            # --- PDF 生成模块 ---
+            class PDF(FPDF):
+                def header(self):
+                    # ******** 修正部分 2: 移除粗体样式'B' ********
+                    self.set_font('SimHei', '', 15)  # 使用注册的常规字体
+                    self.cell(0, 10, 'Intelligent Homogenization Report', 0, 1, 'C')
+                    self.ln(5)
+
+                def footer(self):
+                    self.set_y(-15)
+                    self.set_font('SimHei', '', 8)
+                    self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+                def chapter_title(self, title):
+                    # ******** 修正部分 2: 移除粗体样式'B' ********
+                    self.set_font('SimHei', '', 12)  # 使用注册的常规字体
+                    # 添加下划线模拟“强调”效果
+                    self.cell(0, 10, title, 'B', 1, 'L')
+                    self.ln(4)
+
+                def chapter_body(self, body_text):
+                    self.set_font('SimHei', '', 10)
+                    self.multi_cell(0, 5, body_text.encode('latin-1', 'replace').decode('latin-1'))
+                    self.ln()
+
+                def add_table(self, df):
+                    self.set_font('SimHei', '', 8)
+                    # 动态计算列宽，避免超出页面
+                    effective_w = self.w - 2 * self.l_margin
+                    col_widths = [effective_w / len(df.columns)] * len(df.columns)
+                    # Header
+                    for i, col in enumerate(df.columns):
+                        self.cell(col_widths[i], 7, str(col), 1, 0, 'C')
+                    self.ln()
+                    # Data
+                    for _, row in df.iterrows():
+                        for i, item in enumerate(row):
+                            cell_text = str(item.encode('latin-1', 'replace').decode('latin-1')) if isinstance(item,
+                                                                                                               str) else str(
+                                item)
+                            self.cell(col_widths[i], 6, cell_text, 1)
+                        self.ln()
+                    self.ln(5)
+
+            pdf = PDF()
+
+            # ******** 修正部分 1: 智能查找并加载兼容的 .ttf 中文字体 ********
+            font_loaded = False
+            # 在Windows系统中常见的中文字体文件
+            font_candidates = [
+                r"C:\Windows\Fonts\simhei.ttf",  # 黑体
+                r"C:\Windows\Fonts\kaiti.ttf",  # 楷体
+                r"C:\Windows\Fonts\simfang.ttf",  # 仿宋
+            ]
+            for font_path in font_candidates:
+                if os.path.exists(font_path):
+                    try:
+                        pdf.add_font('SimHei', '', font_path, uni=True)
+                        font_loaded = True
+                        st.info(f"✅ PDF successfully loaded system font: {font_path}")
+                        break
+                    except Exception:
+                        continue
+
+            if not font_loaded:
+                st.warning(
+                    "Could not find a compatible Chinese system font (.ttf) for the PDF. Chinese characters may not display correctly.")
+                # Fallback to a built-in font to prevent crashing
+                pdf.set_font("Arial", size=10)
+
+            pdf.add_page()
+
+            # 1. AI Summary
+            pdf.chapter_title('1. AI-Powered Executive Summary')
+            pdf.chapter_body(ai_summary)
+
+            # (后续章节和逻辑保持不变, 但会因为正确的字体设置而正常工作)
+            # 2. Recommended Recipe Table
+            pdf.chapter_title('2. Recommended Blending Recipe')
+            recipe_df = selected_data[result['x'] > 0.001][['Rubric_Score']].copy()
+            recipe_df['Proportion (%)'] = result['x'][result['x'] > 0.001] * 100
+            recipe_df['Weight (g)'] = recipe_df['Proportion (%)'] / 100 * st.session_state.total_mix_amount
+            recipe_df.reset_index(inplace=True)  # 将索引（批次编号）变成一列
+            recipe_df = recipe_df.rename(columns={'index': 'Batch_ID'})
+            pdf.add_table(recipe_df.round(4))
+
+            # 3. Save and Download
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
+
+            st.download_button(
+                label="📥 下载PDF报告",
+                data=pdf_bytes,
+                file_name=f"Homogenization_Report_{datetime.datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            st.success("✅ PDF报告已成功生成！")
+
+        except Exception as e:
+            st.error(f"❌ PDF生成失败: {e}")
+            import traceback
+            st.code(traceback.format_exc())
 
 
 # 如果您想要更简化的解决方案，也可以暂时移除主题切换功能：
@@ -3019,20 +3186,21 @@ def create_ingredient_analysis_charts(df, col_map, drug_type):
         st.pyplot(fig)
 
 
-def create_optimization_visualization_chinese(result, selected_data, col_map, drug_type, total_mix_amount):
-    """优化结果可视化 - 中文大字体版本"""
+def create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount):
+    """优化结果可视化 - 英文标签大字体版本"""
     st.subheader("🎯 优化结果详细分析")
 
     # 计算各指标的混合后值
     optimal_proportions = result.x
     used_batches = optimal_proportions > 0.001
 
-    fig, axes = create_chinese_figure(nrows=2, ncols=3, figsize=(20, 14))
+    fig, axes = plt.subplots(2, 3, figsize=(20, 14))
+    fig.suptitle('Optimization Results Analysis', fontsize=26, y=0.95)
 
     # 1. 批次使用比例饼图
     used_indices = np.where(used_batches)[0]
     used_props = optimal_proportions[used_indices]
-    used_labels = [f"批次{selected_data.index[i]}" for i in used_indices]
+    used_labels = [f"Batch_{selected_data.index[i]}" for i in used_indices]
 
     # 只显示前8个最大的批次，其他合并为"其他"
     if len(used_indices) > 8:
@@ -3043,7 +3211,7 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
 
         if other_prop > 0:
             top_8_props = np.append(top_8_props, other_prop)
-            top_8_labels.append("其他批次")
+            top_8_labels.append("Others")
 
         pie_props = top_8_props
         pie_labels = top_8_labels
@@ -3052,42 +3220,50 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
         pie_labels = used_labels
 
     wedges, texts, autotexts = axes[0, 0].pie(pie_props, labels=pie_labels, autopct='%1.1f%%',
-                                              startangle=90, textprops={'fontsize': 11})
-    set_chinese_labels(axes[0, 0], title="批次使用比例分布")
+                                              startangle=90, textprops={'fontsize': 14})
+    axes[0, 0].set_title('Batch Usage Proportion', fontsize=20, pad=20)
 
     # 2. 批次贡献度分析（柱状图）
     batch_weights = optimal_proportions * total_mix_amount
-    # 只显示使用量大于1克的批次
     significant_batches = batch_weights > 1
     sig_weights = batch_weights[significant_batches]
-    sig_labels = [f"批次{selected_data.index[i]}" for i in np.where(significant_batches)[0]]
+    sig_labels = [f"Batch_{selected_data.index[i]}" for i in np.where(significant_batches)[0]]
 
-    bars = axes[0, 1].bar(range(len(sig_weights)), sig_weights,
-                          color=plt.cm.Set3(np.linspace(0, 1, len(sig_weights))),
-                          alpha=0.8, edgecolor='black')
-    set_chinese_labels(axes[0, 1],
-                       title="各批次用量分布",
-                       xlabel="批次",
-                       ylabel="用量 (克)")
-    axes[0, 1].set_xticks(range(len(sig_labels)))
-    axes[0, 1].set_xticklabels(sig_labels, rotation=45, fontsize=10)
+    colors = plt.cm.Set3(np.linspace(0, 1, len(sig_weights)))
+    bars = axes[0, 1].bar(range(len(sig_weights)), sig_weights, color=colors,
+                          alpha=0.8, edgecolor='black', linewidth=1.5)
+    axes[0, 1].set_title('Batch Weight Distribution', fontsize=20, pad=20)
+    axes[0, 1].set_xlabel('Batch Index', fontsize=18)
+    axes[0, 1].set_ylabel('Weight (grams)', fontsize=18)
+    axes[0, 1].tick_params(axis='both', which='major', labelsize=16)
+    axes[0, 1].grid(True, alpha=0.3)
+
+    # 简化x轴标签显示
+    if len(sig_labels) <= 10:
+        axes[0, 1].set_xticks(range(len(sig_labels)))
+        axes[0, 1].set_xticklabels([f"B{i + 1}" for i in range(len(sig_labels))], rotation=0)
+    else:
+        # 如果批次太多，只显示部分标签
+        step = max(1, len(sig_labels) // 10)
+        axes[0, 1].set_xticks(range(0, len(sig_labels), step))
+        axes[0, 1].set_xticklabels([f"B{i + 1}" for i in range(0, len(sig_labels), step)])
 
     # 添加数值标注
-    for bar in bars:
+    for i, bar in enumerate(bars):
         height = bar.get_height()
-        if height > 1:  # 只标注大于1克的
+        if height > max(sig_weights) * 0.05:  # 只标注较大的值
             axes[0, 1].text(bar.get_x() + bar.get_width() / 2., height + max(sig_weights) * 0.01,
-                            f'{height:.1f}', ha='center', va='bottom', fontsize=10)
+                            f'{height:.1f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
 
     # 3. 成分达标情况对比
     if drug_type == '甘草':
         target_metrics = ['gg_g', 'ga_g']
         standards = [4.5, 18]
-        labels = ['甘草苷', '甘草酸']
+        labels = ['Glycyrrhizin', 'Glycyrrhizic Acid']
     else:
         target_metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
         standards = [st.session_state.custom_constraints.get(m, 0) for m in target_metrics]
-        labels = st.session_state.get('custom_metrics_info', [])
+        labels = [f"Metric_{i + 1}" for i in range(len(target_metrics))]
 
     actual_values = []
     valid_standards = []
@@ -3099,24 +3275,25 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
             actual_val = np.dot(optimal_proportions, selected_data[col_name].values)
             actual_values.append(actual_val)
             valid_standards.append(standards[i])
-            valid_labels.append(labels[i] if i < len(labels) else f"指标{i + 1}")
+            valid_labels.append(labels[i] if i < len(labels) else f"Metric_{i + 1}")
 
     if actual_values and valid_standards:
         x_pos = np.arange(len(valid_labels))
         width = 0.35
 
         bars1 = axes[0, 2].bar(x_pos - width / 2, valid_standards, width,
-                               label='最低标准', alpha=0.8, color='orange', edgecolor='black')
+                               label='Minimum Standard', alpha=0.8, color='orange', edgecolor='black')
         bars2 = axes[0, 2].bar(x_pos + width / 2, actual_values, width,
-                               label='实际达到', alpha=0.8, color='green', edgecolor='black')
+                               label='Actual Achieved', alpha=0.8, color='green', edgecolor='black')
 
-        set_chinese_labels(axes[0, 2],
-                           title="标准 vs 实际达标情况",
-                           xlabel="成分指标",
-                           ylabel="含量")
+        axes[0, 2].set_title('Standard vs Actual Achievement', fontsize=20, pad=20)
+        axes[0, 2].set_xlabel('Component Indicators', fontsize=18)
+        axes[0, 2].set_ylabel('Content', fontsize=18)
         axes[0, 2].set_xticks(x_pos)
-        axes[0, 2].set_xticklabels(valid_labels, fontsize=11)
-        axes[0, 2].legend(fontsize=12)
+        axes[0, 2].set_xticklabels(valid_labels, fontsize=16)
+        axes[0, 2].legend(fontsize=16)
+        axes[0, 2].tick_params(axis='both', which='major', labelsize=16)
+        axes[0, 2].grid(True, alpha=0.3)
 
         # 添加数值标注
         for bars in [bars1, bars2]:
@@ -3124,21 +3301,22 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
                 height = bar.get_height()
                 axes[0, 2].text(bar.get_x() + bar.get_width() / 2.,
                                 height + max(max(valid_standards), max(actual_values)) * 0.01,
-                                f'{height:.2f}', ha='center', va='bottom', fontsize=10)
+                                f'{height:.2f}', ha='center', va='bottom', fontsize=14, fontweight='bold')
 
     # 4. 批次质量分布对比
     all_scores = selected_data['Rubric_Score']
     used_scores = selected_data.iloc[used_indices]['Rubric_Score']
 
     axes[1, 0].hist(all_scores, bins=15, alpha=0.6, color='lightblue',
-                    label='所有选中批次', edgecolor='black')
+                    label='All Selected Batches', edgecolor='black', linewidth=1.5)
     axes[1, 0].hist(used_scores, bins=15, alpha=0.8, color='red',
-                    label='实际使用批次', edgecolor='black')
-    set_chinese_labels(axes[1, 0],
-                       title="质量评分分布对比",
-                       xlabel="质量评分",
-                       ylabel="批次数量")
-    axes[1, 0].legend(fontsize=12)
+                    label='Actually Used Batches', edgecolor='black', linewidth=1.5)
+    axes[1, 0].set_title('Quality Score Distribution Comparison', fontsize=20, pad=20)
+    axes[1, 0].set_xlabel('Quality Score', fontsize=18)
+    axes[1, 0].set_ylabel('Number of Batches', fontsize=18)
+    axes[1, 0].legend(fontsize=16)
+    axes[1, 0].tick_params(axis='both', which='major', labelsize=16)
+    axes[1, 0].grid(True, alpha=0.3)
 
     # 5. 成本效益分析
     cost_col = col_map.get('cost', '模拟成本')
@@ -3148,22 +3326,25 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
 
         # 所有批次的散点
         axes[1, 1].scatter(selected_data[cost_col], selected_data['Rubric_Score'],
-                           alpha=0.5, s=50, color='lightgray', label='所有批次', edgecolors='black')
+                           alpha=0.5, s=80, color='lightgray', label='All Batches',
+                           edgecolors='black', linewidth=1)
         # 使用批次的散点
         axes[1, 1].scatter(selected_data.iloc[used_indices][cost_col], used_scores,
-                           color='red', s=100, label='使用批次', edgecolors='black', alpha=0.8)
+                           color='red', s=120, label='Used Batches',
+                           edgecolors='black', alpha=0.8, linewidth=1.5)
 
-        set_chinese_labels(axes[1, 1],
-                           title="成本-质量效益分析",
-                           xlabel="单位成本 (元/克)",
-                           ylabel="质量评分")
-        axes[1, 1].legend(fontsize=12)
+        axes[1, 1].set_title('Cost-Quality Efficiency Analysis', fontsize=20, pad=20)
+        axes[1, 1].set_xlabel('Unit Cost (Yuan/gram)', fontsize=18)
+        axes[1, 1].set_ylabel('Quality Score', fontsize=18)
+        axes[1, 1].legend(fontsize=16)
+        axes[1, 1].tick_params(axis='both', which='major', labelsize=16)
+        axes[1, 1].grid(True, alpha=0.3)
 
         # 添加成本效益信息文本框
-        info_text = f'总成本: {total_cost:.2f}元\n平均质量: {avg_quality:.3f}'
+        info_text = f'Total Cost: {total_cost:.2f} Yuan\nAvg Quality: {avg_quality:.3f}'
         axes[1, 1].text(0.05, 0.95, info_text, transform=axes[1, 1].transAxes,
-                        bbox=dict(boxstyle="round,pad=0.3", facecolor='wheat', alpha=0.8),
-                        fontsize=12, verticalalignment='top')
+                        bbox=dict(boxstyle="round,pad=0.5", facecolor='wheat', alpha=0.8),
+                        fontsize=16, verticalalignment='top', fontweight='bold')
 
     # 6. 库存使用情况
     inventory = selected_data['库存量 (克)'].fillna(total_mix_amount * 10)
@@ -3172,30 +3353,53 @@ def create_optimization_visualization_chinese(result, selected_data, col_map, dr
 
     # 只显示实际使用的批次
     used_usage = usage_ratio[used_batches]
-    used_batch_labels = [f"批次{selected_data.index[i]}" for i in used_indices]
+    used_batch_labels = [f"Batch_{selected_data.index[i]}" for i in used_indices]
 
     # 根据使用率设置颜色
     colors = ['green' if x < 50 else 'orange' if x < 80 else 'red' for x in used_usage]
     bars = axes[1, 2].bar(range(len(used_usage)), used_usage, color=colors,
-                          alpha=0.8, edgecolor='black')
+                          alpha=0.8, edgecolor='black', linewidth=1.5)
 
-    set_chinese_labels(axes[1, 2],
-                       title="各批次库存使用情况",
-                       xlabel="批次",
-                       ylabel="库存使用率 (%)")
-    axes[1, 2].set_xticks(range(len(used_batch_labels)))
-    axes[1, 2].set_xticklabels(used_batch_labels, rotation=45, fontsize=10)
-    axes[1, 2].axhline(y=80, color='red', linestyle='--', alpha=0.7, linewidth=2, label='高使用率警戒线')
-    axes[1, 2].legend(fontsize=12)
+    axes[1, 2].set_title('Inventory Usage by Batch', fontsize=20, pad=20)
+    axes[1, 2].set_xlabel('Batch Index', fontsize=18)
+    axes[1, 2].set_ylabel('Inventory Usage Rate (%)', fontsize=18)
+    axes[1, 2].tick_params(axis='both', which='major', labelsize=16)
+    axes[1, 2].grid(True, alpha=0.3)
+
+    # 简化x轴标签
+    if len(used_batch_labels) <= 10:
+        axes[1, 2].set_xticks(range(len(used_batch_labels)))
+        axes[1, 2].set_xticklabels([f"B{i + 1}" for i in range(len(used_batch_labels))], rotation=0)
+    else:
+        step = max(1, len(used_batch_labels) // 10)
+        axes[1, 2].set_xticks(range(0, len(used_batch_labels), step))
+        axes[1, 2].set_xticklabels([f"B{i + 1}" for i in range(0, len(used_batch_labels), step)])
+
+    axes[1, 2].axhline(y=80, color='red', linestyle='--', alpha=0.7,
+                       linewidth=3, label='High Usage Warning Line')
+    axes[1, 2].legend(fontsize=16)
 
     # 添加使用率标注
     for i, bar in enumerate(bars):
         height = bar.get_height()
-        if height > 5:  # 只标注大于5%的
+        if height > 10:  # 只标注大于10%的
             axes[1, 2].text(bar.get_x() + bar.get_width() / 2., height + 2,
-                            f'{height:.1f}%', ha='center', va='bottom', fontsize=10)
+                            f'{height:.1f}%', ha='center', va='bottom',
+                            fontsize=12, fontweight='bold')
 
     plt.tight_layout()
+
+    # 添加中文说明
+    st.markdown("""
+    **优化结果图表说明：**
+    - **Batch Usage Proportion**: 批次使用比例分布
+    - **Batch Weight Distribution**: 各批次用量分布  
+    - **Standard vs Actual Achievement**: 标准要求 vs 实际达成情况
+    - **Quality Score Distribution Comparison**: 质量评分分布对比（所有批次 vs 实际使用批次）
+    - **Cost-Quality Efficiency Analysis**: 成本效益分析
+    - **Inventory Usage by Batch**: 各批次库存使用情况
+    """)
+
     st.pyplot(fig)
 
 
@@ -3815,13 +4019,13 @@ def create_optimization_visualization_english(result, selected_data, col_map, dr
 
 
 def display_successful_result_universal_enhanced(result, selected_data, total_mix_amount, col_map,
-                                                         constraints_dict,
-                                                         fingerprint_options, drug_type, target_contents=None):
-    """增强版结果显示函数，使用英文标签"""
+                                                 constraints_dict,
+                                                 fingerprint_options, drug_type, target_contents=None):
+    """增强版结果显示函数，使用英文标签（已修复中文方块问题）"""
     st.subheader("★ 智能混批推荐方案 ★", anchor=False)
     st.success("成功找到最优混合方案！", icon="🎉")
 
-    # 基础信息展示
+    # --- 基础信息展示部分保持不变 ---
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.session_state.current_mode == "成本最优":
@@ -3833,16 +4037,14 @@ def display_successful_result_universal_enhanced(result, selected_data, total_mi
             else:
                 quality_score = -result.fun
                 st.metric("预期质量评分", f"{quality_score:.4f}")
-
     with col2:
         used_batches_count = len(np.where(result.x > 0.001)[0])
         st.metric("实际使用批次数", used_batches_count)
-
     with col3:
         total_inventory_used = np.sum(result.x * total_mix_amount)
         st.metric("总原料用量 (克)", f"{total_inventory_used:.2f}")
 
-    # 详细配比表格
+    # --- 详细配比表格部分保持不变 ---
     st.subheader("📋 详细配比方案")
     optimal_weights = result.x * total_mix_amount
     recommendation_df = pd.DataFrame({
@@ -3851,150 +4053,159 @@ def display_successful_result_universal_enhanced(result, selected_data, total_mi
         '使用比例 (%)': result.x * 100,
         '质量评分': selected_data['Rubric_Score']
     })
-
     significant_batches = recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01]
     st.dataframe(significant_batches.round(2), use_container_width=True)
 
-    # 调用英文版可视化函数
+    # --- 可视化函数调用保持不变 ---
     create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount)
 
-    # 约束达标情况
+    # --- 约束达标情况分析（包含修正） ---
     st.subheader("✅ 约束指标达标情况")
     status_data = []
-
     for key, min_val in constraints_dict.items():
         col_name = col_map.get(key)
         if col_name and col_name in selected_data.columns:
             final_val = np.dot(result.x, selected_data[col_name].values)
             status = "✓" if final_val >= min_val else "✗"
-
             if drug_type == '甘草':
                 display_name = col_name
             else:
                 if key.startswith('metric_'):
                     metric_index = int(key.split('_')[1])
-                    if metric_index < len(st.session_state.custom_metrics_info):
-                        display_name = st.session_state.custom_metrics_info[metric_index]
-                    else:
-                        display_name = col_name
+                    display_name = st.session_state.custom_metrics_info[metric_index] if metric_index < len(
+                        st.session_state.custom_metrics_info) else col_name
                 else:
                     display_name = col_name
-
             status_data.append([display_name, f"{final_val:.4f}", f"≥ {min_val}", status])
 
-    # 创建约束达标可视化（英文版）
     if status_data:
+        # --- 图表绘制部分（已修正）---
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
 
-        # 达标情况饼图
+        # 饼图部分（不变）
         passed_count = sum([1 for row in status_data if row[3] == "✓"])
         failed_count = len(status_data) - passed_count
-
         colors = ['green', 'red'] if failed_count > 0 else ['green']
         sizes = [passed_count, failed_count] if failed_count > 0 else [passed_count]
         labels = ['Passed', 'Failed'] if failed_count > 0 else ['All Passed']
-
-        ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-                textprops={'fontsize': 16}, startangle=90)
+        ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', textprops={'fontsize': 16}, startangle=90)
         ax1.set_title('Constraint Compliance Rate', fontsize=20, pad=20)
 
-        # 具体指标对比
-        names = [row[0] for row in status_data]
+        # 柱状图部分（已修正）
+        chinese_names = [row[0] for row in status_data]
         actual_vals = [float(row[1]) for row in status_data]
         required_vals = [float(row[2].split('≥')[1].strip()) for row in status_data]
 
-        x = np.arange(len(names))
+        # ******** 新增的翻译逻辑 ********
+        english_names = []
+        for name in chinese_names:
+            if '甘草酸' in name:
+                english_names.append('Glycyrrhizic Acid')
+            elif '甘草苷' in name:
+                english_names.append('Glycyrrhizin')
+            elif '相似度' in name:
+                english_names.append('Similarity')
+            elif '指标' in name and any(char.isdigit() for char in name):
+                num = ''.join(filter(str.isdigit, name))
+                english_names.append(f'Metric {num}')
+            else:
+                english_names.append(name)  # Fallback
+
+        x = np.arange(len(english_names))
         width = 0.35
-
-        bars1 = ax2.bar(x - width / 2, required_vals, width, label='Required',
-                        alpha=0.8, color='orange', edgecolor='black')
-        bars2 = ax2.bar(x + width / 2, actual_vals, width, label='Actual',
-                        alpha=0.8, color='green', edgecolor='black')
-
+        bars1 = ax2.bar(x - width / 2, required_vals, width, label='Required', alpha=0.8, color='orange',
+                        edgecolor='black')
+        bars2 = ax2.bar(x + width / 2, actual_vals, width, label='Actual', alpha=0.8, color='green', edgecolor='black')
         ax2.set_xlabel('Indicators', fontsize=18)
         ax2.set_ylabel('Values', fontsize=18)
         ax2.set_title('Required vs Actual Values', fontsize=20, pad=20)
         ax2.set_xticks(x)
-        ax2.set_xticklabels(names, rotation=45, fontsize=14)
+        # ******** 使用翻译后的英文标签 ********
+        ax2.set_xticklabels(english_names, rotation=45, ha="right", fontsize=14)
         ax2.legend(fontsize=16)
         ax2.tick_params(axis='both', which='major', labelsize=16)
         ax2.grid(True, alpha=0.3)
-
-        plt.tight_layout()
+        fig.tight_layout()  # 调整布局防止标签被截断
         st.pyplot(fig)
 
-    # 原有表格显示
     st.table(pd.DataFrame(status_data, columns=['指标名称', '预期值', '标准要求', '是否达标']))
 
-    # 目标达成情况可视化
+    # --- 目标达成情况可视化（包含修正） ---
     if target_contents:
         st.subheader("🎯 目标含量达成情况")
         target_data = []
-        target_names = []
+        target_names_chinese = []
         actual_values = []
         target_values = []
         deviations = []
-
         for key, target_val in target_contents.items():
             col_name = col_map.get(key)
             if col_name and col_name in selected_data.columns:
                 final_val = np.dot(result.x, selected_data[col_name].values)
                 deviation = abs(final_val - target_val)
-                deviation_percent = (deviation / target_val) * 100
-
+                deviation_percent = (deviation / target_val) * 100 if target_val != 0 else 0
                 if drug_type == '甘草':
                     display_name = col_name
                 else:
                     if key.startswith('metric_'):
                         metric_index = int(key.split('_')[1])
-                        if metric_index < len(st.session_state.custom_metrics_info):
-                            display_name = st.session_state.custom_metrics_info[metric_index]
-                        else:
-                            display_name = col_name
+                        display_name = st.session_state.custom_metrics_info[metric_index] if metric_index < len(
+                            st.session_state.custom_metrics_info) else col_name
                     else:
                         display_name = col_name
-
                 target_data.append([display_name, f"{final_val:.4f}", f"{target_val:.4f}", f"{deviation_percent:.2f}%"])
-                target_names.append(display_name)
+                target_names_chinese.append(display_name)
                 actual_values.append(final_val)
                 target_values.append(target_val)
                 deviations.append(deviation_percent)
 
-        # 目标达成可视化（英文版）
-        if target_names:
+        if target_names_chinese:
+            # ******** 新增的翻译逻辑 ********
+            target_names_english = []
+            for name in target_names_chinese:
+                if '甘草酸' in name:
+                    target_names_english.append('Glycyrrhizic Acid')
+                elif '甘草苷' in name:
+                    target_names_english.append('Glycyrrhizin')
+                elif '指标' in name and any(char.isdigit() for char in name):
+                    num = ''.join(filter(str.isdigit, name))
+                    target_names_english.append(f'Metric {num}')
+                else:
+                    target_names_english.append(name)
+
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-
-            # 目标 vs 实际值对比
-            x = np.arange(len(target_names))
+            x = np.arange(len(target_names_english))
             width = 0.35
-
-            ax1.bar(x - width / 2, target_values, width, label='Target',
-                    alpha=0.8, color='blue', edgecolor='black')
-            ax1.bar(x + width / 2, actual_values, width, label='Actual',
-                    alpha=0.8, color='green', edgecolor='black')
+            ax1.bar(x - width / 2, target_values, width, label='Target', alpha=0.8, color='blue', edgecolor='black')
+            ax1.bar(x + width / 2, actual_values, width, label='Actual', alpha=0.8, color='green', edgecolor='black')
             ax1.set_xlabel('Indicators', fontsize=18)
             ax1.set_ylabel('Content', fontsize=18)
             ax1.set_title('Target vs Actual Values', fontsize=20, pad=20)
             ax1.set_xticks(x)
-            ax1.set_xticklabels(target_names, fontsize=16)
+            # ******** 使用翻译后的英文标签 ********
+            ax1.set_xticklabels(target_names_english, rotation=45, ha="right", fontsize=16)
             ax1.legend(fontsize=16)
             ax1.tick_params(axis='both', which='major', labelsize=16)
             ax1.grid(True, alpha=0.3)
 
-            # 偏差百分比
-            colors = ['green' if x < 5 else 'orange' if x < 10 else 'red' for x in deviations]
-            bars = ax2.bar(target_names, deviations, color=colors, alpha=0.8, edgecolor='black')
+            colors = ['green' if d < 5 else 'orange' if d < 10 else 'red' for d in deviations]
+            # ******** 使用翻译后的英文标签 ********
+            bars = ax2.bar(target_names_english, deviations, color=colors, alpha=0.8, edgecolor='black')
             ax2.set_xlabel('Indicators', fontsize=18)
             ax2.set_ylabel('Deviation (%)', fontsize=18)
             ax2.set_title('Target Achievement Deviation', fontsize=20, pad=20)
-            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, linewidth=2, label='Excellent (5%)')
-            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, linewidth=2, label='Good (10%)')
+            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, linewidth=2, label='Excellent (<5%)')
+            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, linewidth=2, label='Good (<10%)')
             ax2.tick_params(axis='both', which='major', labelsize=16)
             ax2.grid(True, alpha=0.3)
             ax2.legend(fontsize=16)
 
-            plt.xticks(rotation=45)
-            plt.tight_layout()
+            # 自动旋转x轴标签以避免重叠
+            for label in ax2.get_xticklabels():
+                label.set_rotation(45)
+                label.set_ha('right')
+
+            fig.tight_layout()
             st.pyplot(fig)
 
         st.table(pd.DataFrame(target_data, columns=['指标名称', '实际值', '目标值', '偏差百分比']))
@@ -5207,12 +5418,12 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
 
     with col1:
         st.markdown("""
-        <div class="metric-card" style="height: 180px; padding: 1.5rem;">
+        <div class="metric-card" style="height: 180px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
             <div style="text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
-                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 1rem;">SLSQP 引擎</div>
-                <div style="font-size: 0.9rem; color: #666; line-height: 1.5;">
-                    • 快速单目标优化，通常几秒钟得到结果
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🚀</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 0.5rem;">SLSQP 引擎</div>
+                <div style="font-size: 0.9rem; color: #666; line-height: 1.4;">
+                    • 快速单目标优化<br>• 通常几秒钟得到结果
                 </div>
             </div>
         </div>
@@ -5222,24 +5433,24 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
 
     with col2:
         st.markdown("""
-        <div class="metric-card" style="height: 180px; padding: 1.5rem;">
+        <div class="metric-card" style="height: 180px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
             <div style="text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🧬</div>
-                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 1rem;">NSGA-II 引擎</div>
-                <div style="font-size: 0.9rem; color: #666; line-height: 1.5;">
-                    • 多目标进化算法，计算全面但需要更多时间
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🧬</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 0.5rem;">NSGA-II 引擎</div>
+                <div style="font-size: 0.9rem; color: #666; line-height: 1.4;">
+                    • 多目标进化算法<br>• 计算全面但需要更多时间
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        nsga2_selected = st.button("🧬 选择 NSGA-II", key="select_nsga2", use_container_width=True)
+        nsga_selected = st.button("🧬 选择 NSGA-II", key="select_nsga2", use_container_width=True)
 
     # 处理引擎选择
     if slsqp_selected:
         st.session_state.optimization_mode = '质量/成本最优 (SLSQP)'
         st.rerun()
-    elif nsga2_selected:
+    elif nsga_selected:
         st.session_state.optimization_mode = '多目标均衡 (NSGA-II)'
         st.rerun()
 
@@ -5532,6 +5743,17 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         st.warning(f"⚠️ 还有 {inventory_missing} 个批次未设置库存量，请在表格中补充完整")
 
     selected_rows = edited_df[edited_df.选择]
+    if not selected_rows.empty:
+        # 将选中数据存入会话状态，供预览函数使用
+        st.session_state.selected_batches_preview = selected_rows
+        # 调用实时预览函数
+        create_realtime_preview()
+    else:
+        # 如果没有选中项，清空预览数据
+        if 'selected_batches_preview' in st.session_state:
+            del st.session_state['selected_batches_preview']
+
+    selected_rows = edited_df[edited_df.选择]
     selected_indices = selected_rows.index.tolist()
 
     # 优化计算按钮
@@ -5585,6 +5807,12 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
                         )
 
                     if result.success:
+                        st.session_state.optimization_result = {
+                            'result': result,
+                            'selected_data': full_selected_data,
+                            'constraints': MINIMUM_STANDARDS,
+                            'fp_options': fingerprint_options
+                        }
                         display_successful_result_universal_enhanced(
                             result, full_selected_data, st.session_state.total_mix_amount,
                             col_map, MINIMUM_STANDARDS, fingerprint_options,
@@ -5602,9 +5830,18 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
                         solutions, values = run_nsga2_optimization(full_selected_data, col_map,
                                                                    st.session_state.nsga_params)
 
+
                     if solutions:
                         display_nsga2_results(solutions, values, full_selected_data, col_map,
                                               st.session_state.total_mix_amount)
+                        representative_result_x = solutions[0]
+                        representative_result = {'x': representative_result_x, 'fun': values[0][0]} # 伪造一个result对象
+                        st.session_state.optimization_result = {
+                            'result': representative_result,
+                            'selected_data': full_selected_data,
+                            'constraints': {'Note': 'NSGA-II multi-objective'},
+                            'fp_options': {}
+                        }
                     else:
                         st.error("🚫 NSGA-II 优化失败")
                         st.markdown("""
@@ -5634,9 +5871,6 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
     # 添加键盘快捷键
     add_keyboard_shortcuts()
 
-    # 在批次选择表格后添加实时预览
-    if len(selected_indices) > 0:
-        create_realtime_preview()
 
     # 在优化计算部分添加导出功能
     if 'optimization_result' in st.session_state:
