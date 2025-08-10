@@ -438,38 +438,6 @@ sns.set_palette("husl")
 if 'drug_type' not in st.session_state:
     st.session_state.drug_type = '甘草'
 
-# 在标题下方添加切换按钮
-# 药物类型选择优化
-st.markdown("""
-<div class="custom-card">
-    <h3 style="color: #2E7D32; text-align: center; margin-bottom: 1rem;">🎯 选择分析模式</h3>
-</div>
-""", unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    drug_type = st.radio(
-        "",
-        ['🌿 甘草专用模式', '🔬 通用分析模式'],
-        index=0 if st.session_state.drug_type == '甘草' else 1,
-        horizontal=True,
-        key="drug_type_selector",
-        help="甘草模式：预设药典标准约束 | 通用模式：自定义约束条件"
-    )
-
-    # 处理模式切换逻辑
-    actual_drug_type = '甘草' if '甘草' in drug_type else '其他药物'
-
-    # 如果切换了药物类型，重置相关状态
-    if actual_drug_type != st.session_state.drug_type:
-        st.session_state.drug_type = actual_drug_type
-        # 重置到上传阶段，但保留一些基本设置
-        keys_to_keep = ['drug_type', 'nsga_target_gg', 'nsga_target_ga']
-        keys_to_remove = [key for key in st.session_state.keys() if key not in keys_to_keep]
-        for key in keys_to_remove:
-            del st.session_state[key]
-        st.session_state.app_state = 'AWAITING_UPLOAD'
-        st.rerun()
 
 
 def apply_custom_css():
@@ -1401,221 +1369,6 @@ def show_data_analysis_dashboard():
                                                   st.session_state.drug_type)
 
 
-# 在成功结果显示中：
-def display_successful_result_universal_enhanced_chinese(result, selected_data, total_mix_amount, col_map,
-                                                         constraints_dict,
-                                                         fingerprint_options, drug_type, target_contents=None):
-    """增强版结果显示函数，包含中文大字体可视化"""
-    st.subheader("★ 智能混批推荐方案 ★", anchor=False)
-    st.success("成功找到最优混合方案！", icon="🎉")
-
-    # 基础信息展示（保持原有逻辑）
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.session_state.current_mode == "成本最优":
-            st.metric("预期总成本 (元)", f"{(result.fun * total_mix_amount):.2f}")
-        else:
-            if drug_type == '甘草':
-                ml_score = -result.fun
-                st.metric("预期最高ML Score (1-10分)", f"{ml_score:.2f}")
-            else:
-                quality_score = -result.fun
-                st.metric("预期质量评分", f"{quality_score:.4f}")
-
-    with col2:
-        used_batches_count = len(np.where(result.x > 0.001)[0])
-        st.metric("实际使用批次数", used_batches_count)
-
-    with col3:
-        total_inventory_used = np.sum(result.x * total_mix_amount)
-        st.metric("总原料用量 (克)", f"{total_inventory_used:.2f}")
-
-    # 详细配比表格
-    st.subheader("📋 详细配比方案")
-    optimal_weights = result.x * total_mix_amount
-    recommendation_df = pd.DataFrame({
-        '批次编号': selected_data.index,
-        '推荐用量 (克)': optimal_weights,
-        '使用比例 (%)': result.x * 100,
-        '质量评分': selected_data['Rubric_Score']
-    })
-
-    significant_batches = recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01]
-    st.dataframe(significant_batches.round(2), use_container_width=True)
-
-    # 调用中文版可视化函数
-    create_optimization_visualization_chinese(result, selected_data, col_map, drug_type, total_mix_amount)
-    # 约束达标情况（保持原有逻辑）
-    st.subheader("✅ 约束指标达标情况")
-    status_data = []
-
-    for key, min_val in constraints_dict.items():
-        col_name = col_map.get(key)
-        if col_name and col_name in selected_data.columns:
-            final_val = np.dot(result.x, selected_data[col_name].values)
-            status = "✓" if final_val >= min_val else "✗"
-
-            if drug_type == '甘草':
-                display_name = col_name
-            else:
-                if key.startswith('metric_'):
-                    metric_index = int(key.split('_')[1])
-                    if metric_index < len(st.session_state.custom_metrics_info):
-                        display_name = st.session_state.custom_metrics_info[metric_index]
-                    else:
-                        display_name = col_name
-                else:
-                    display_name = col_name
-
-            status_data.append([display_name, f"{final_val:.4f}", f"≥ {min_val}", status])
-
-    # 创建约束达标可视化
-    if status_data:
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-        # 达标情况饼图
-        passed_count = sum([1 for row in status_data if row[3] == "✓"])
-        failed_count = len(status_data) - passed_count
-
-        ax1.pie([passed_count, failed_count], labels=['达标', '未达标'],
-                colors=['green', 'red'], autopct='%1.1f%%')
-        ax1.set_title('约束达标率')
-
-        # 具体指标对比
-        names = [row[0] for row in status_data]
-        actual_vals = [float(row[1]) for row in status_data]
-        required_vals = [float(row[2].split('≥')[1].strip()) for row in status_data]
-
-        x = np.arange(len(names))
-        width = 0.35
-
-        bars1 = ax2.bar(x - width / 2, required_vals, width, label='要求值', alpha=0.7)
-        bars2 = ax2.bar(x + width / 2, actual_vals, width, label='实际值', alpha=0.7)
-
-        ax2.set_xlabel('指标')
-        ax2.set_ylabel('数值')
-        ax2.set_title('要求值 vs 实际值对比')
-        ax2.set_xticks(x)
-        ax2.set_xticklabels(names, rotation=45)
-        ax2.legend()
-
-        plt.tight_layout()
-        st.pyplot(fig)
-
-    # 原有表格显示
-    st.table(pd.DataFrame(status_data, columns=['指标名称', '预期值', '标准要求', '是否达标']))
-
-    # 目标达成情况可视化
-    if target_contents:
-        st.subheader("🎯 目标含量达成情况")
-        target_data = []
-        target_names = []
-        actual_values = []
-        target_values = []
-        deviations = []
-
-        for key, target_val in target_contents.items():
-            col_name = col_map.get(key)
-            if col_name and col_name in selected_data.columns:
-                final_val = np.dot(result.x, selected_data[col_name].values)
-                deviation = abs(final_val - target_val)
-                deviation_percent = (deviation / target_val) * 100
-
-                if drug_type == '甘草':
-                    display_name = col_name
-                else:
-                    if key.startswith('metric_'):
-                        metric_index = int(key.split('_')[1])
-                        if metric_index < len(st.session_state.custom_metrics_info):
-                            display_name = st.session_state.custom_metrics_info[metric_index]
-                        else:
-                            display_name = col_name
-                    else:
-                        display_name = col_name
-
-                target_data.append([display_name, f"{final_val:.4f}", f"{target_val:.4f}", f"{deviation_percent:.2f}%"])
-                target_names.append(display_name)
-                actual_values.append(final_val)
-                target_values.append(target_val)
-                deviations.append(deviation_percent)
-
-        # 目标达成可视化
-        if target_names:
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-
-            # 目标 vs 实际值对比
-            x = np.arange(len(target_names))
-            width = 0.35
-
-            ax1.bar(x - width / 2, target_values, width, label='目标值', alpha=0.7, color='blue')
-            ax1.bar(x + width / 2, actual_values, width, label='实际值', alpha=0.7, color='green')
-            ax1.set_xlabel('指标')
-            ax1.set_ylabel('含量')
-            ax1.set_title('目标值 vs 实际值')
-            ax1.set_xticks(x)
-            ax1.set_xticklabels(target_names)
-            ax1.legend()
-
-            # 偏差百分比
-            colors = ['green' if x < 5 else 'orange' if x < 10 else 'red' for x in deviations]
-            bars = ax2.bar(target_names, deviations, color=colors)
-            ax2.set_xlabel('指标')
-            ax2.set_ylabel('偏差 (%)')
-            ax2.set_title('目标达成偏差百分比')
-            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, label='优秀线(5%)')
-            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, label='良好线(10%)')
-
-            # 添加数值标注
-            for bar, deviation in zip(bars, deviations):
-                height = bar.get_height()
-                ax2.text(bar.get_x() + bar.get_width() / 2., height,
-                         f'{deviation:.1f}%', ha='center', va='bottom')
-
-            ax2.legend()
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            st.pyplot(fig)
-
-        st.table(pd.DataFrame(target_data, columns=['指标名称', '实际值', '目标值', '偏差百分比']))
-
-    # 指纹图谱结果（如果启用）
-    if fingerprint_options['enabled'] and fingerprint_options['target_profile'] is not None:
-        mix_f_profile = np.dot(result.x, selected_data[fingerprint_options['f_cols']].values)
-        final_sim = cosine_similarity(mix_f_profile.reshape(1, -1),
-                                      fingerprint_options['target_profile'].reshape(1, -1))[0, 0]
-        status = "✓" if final_sim >= fingerprint_options['min_similarity'] else "✗"
-
-        st.subheader("🔬 指纹图谱匹配分析")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("相似度得分", f"{final_sim:.4f}")
-            st.metric("要求标准", f"≥ {fingerprint_options['min_similarity']}")
-            if status == "✓":
-                st.success("✅ 指纹图谱匹配成功")
-            else:
-                st.error("❌ 指纹图谱匹配失败")
-
-        with col2:
-            # 指纹图谱对比图
-            fig, ax = plt.subplots(figsize=(10, 6))
-            feature_cols = fingerprint_options['f_cols']
-            x_pos = range(len(feature_cols))
-
-            ax.plot(x_pos, fingerprint_options['target_profile'], 'o-',
-                    label='目标轮廓', linewidth=2, markersize=8)
-            ax.plot(x_pos, mix_f_profile, 's-',
-                    label='混合轮廓', linewidth=2, markersize=8)
-
-            ax.set_xlabel('指纹特征')
-            ax.set_ylabel('特征值')
-            ax.set_title('指纹图谱轮廓对比')
-            ax.set_xticks(x_pos)
-            ax.set_xticklabels([f'F{i + 1}' for i in range(len(feature_cols))], rotation=45)
-            ax.legend()
-            ax.grid(True, alpha=0.3)
-
-            plt.tight_layout()
-            st.pyplot(fig)
 
 
 
@@ -1693,23 +1446,67 @@ def run_nsga2_optimization(selected_data, col_map, nsga_params):
 
 def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_amount):
     """
-    为NSGA-II的结果提供定制化的展示
+    为NSGA-II的结果提供定制化的展示，增强可视化和交互功能
     """
     st.subheader("★ NSGA-II 多目标均衡方案 ★", anchor=False)
 
-    # --- 1. 绘制帕累托前沿图 ---
+    # --- 1. 绘制帕累托前沿图，包含多个前沿对比 ---
     st.write("**帕累托前沿分布图**")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(values[:, 0], -values[:, 1], c='#005A9C', marker='o', s=80, label='Pareto Optimal Solutions', alpha=0.8)
-    ax.set_title("Pareto Front: Content Deviation vs. Similarity", fontsize=16)
-    ax.set_xlabel("Objective 1: Weighted Content Deviation (Lower is Better)", fontsize=12)
-    ax.set_ylabel("Objective 2: Similarity (Higher is Better)", fontsize=12)
+
+    # 计算所有前沿用于对比
+    all_fronts = fast_non_dominated_sort(values)
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # 绘制第一前沿（最优解）
+    first_front_indices = all_fronts[0] if all_fronts else []
+    if first_front_indices:
+        first_front_values = values[first_front_indices]
+        ax.scatter(first_front_values[:, 0], -first_front_values[:, 1],
+                   c='red', marker='o', s=120, label='Pareto Front 1 (Optimal)',
+                   alpha=0.9, edgecolors='darkred', linewidth=2)
+
+    # 绘制第二前沿（如果存在）
+    if len(all_fronts) > 1:
+        second_front_indices = all_fronts[1]
+        if second_front_indices:
+            second_front_values = values[second_front_indices]
+            ax.scatter(second_front_values[:, 0], -second_front_values[:, 1],
+                       c='orange', marker='s', s=80, label='Pareto Front 2 (Sub-optimal)',
+                       alpha=0.7, edgecolors='darkorange', linewidth=1.5)
+
+    # 绘制其他前沿（如果存在）
+    if len(all_fronts) > 2:
+        other_indices = []
+        for i in range(2, min(4, len(all_fronts))):  # 最多显示4个前沿
+            other_indices.extend(all_fronts[i])
+        if other_indices:
+            other_values = values[other_indices]
+            ax.scatter(other_values[:, 0], -other_values[:, 1],
+                       c='lightblue', marker='^', s=50, label='Other Fronts',
+                       alpha=0.5, edgecolors='blue', linewidth=1)
+
+    ax.set_title("Multi-Objective Pareto Fronts Comparison", fontsize=18, pad=20)
+    ax.set_xlabel("Objective 1: Weighted Content Deviation (Lower is Better)", fontsize=14)
+    ax.set_ylabel("Objective 2: Similarity (Higher is Better)", fontsize=14)
     ax.grid(True, linestyle='--', alpha=0.6)
-    ax.legend()
+    ax.legend(fontsize=12, loc='best')
+    ax.tick_params(axis='both', which='major', labelsize=12)
+
+    plt.tight_layout()
     st.pyplot(fig)
 
+    # 显示前沿统计信息
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("第一前沿解数量", len(first_front_indices))
+    with col2:
+        st.metric("总前沿层数", len(all_fronts))
+    with col3:
+        st.metric("总候选方案数", len(values))
+
     # --- 2. 展示方案列表 ---
-    st.write("**备选方案列表 (已按含量偏离度排序)**")
+    st.write("**第一前沿最优方案列表**")
     results = []
     ingredient_columns = [col_map['gg_g'], col_map['ga_g']]
 
@@ -1727,49 +1524,146 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
             '相似度': -val[1],
             f'产出_{col_map["gg_g"]}': blended_ingredients[0],
             f'产出_{col_map["ga_g"]}': blended_ingredients[1],
-            '使用的批次数': len(np.where(final_proportions > 0)[0]),
-            'proportions': final_proportions  # 暂存，用于详情展示
+            '使用的批次数': len(np.where(final_proportions > 0.001)[0]),
+            'proportions': final_proportions
         })
 
     results_df = pd.DataFrame(results)
 
-    # 使用 st.data_editor 让用户选择方案查看详情
-    selected_solution = st.data_editor(
-        results_df.drop(columns=['proportions']).style.format({
-            '含量偏离度': "{:.4f}",
-            '相似度': "{:.4f}",
-            f'产出_{col_map["gg_g"]}': "{:.4f}",
-            f'产出_{col_map["ga_g"]}': "{:.4f}",
-        }),
-        use_container_width=True,
-        hide_index=True,
-        key="nsga_results_editor"
+    # --- 3. 使用可点击的选择方式 ---
+    st.write("**点击下方表格中的任意行查看详细配比：**")
+
+    # 创建选择框让用户选择方案
+    selected_solution_index = st.selectbox(
+        "选择方案查看详情:",
+        options=range(len(results_df)),
+        format_func=lambda
+            x: f"方案_{x + 1} (偏离度: {results_df.iloc[x]['含量偏离度']:.4f}, 相似度: {results_df.iloc[x]['相似度']:.4f})",
+        key="solution_selector"
     )
 
-    # --- 3. 显示选中方案的详情 ---
-    st.write("**选中方案的详细配比**")
-    try:
-        # 获取data_editor中被点击的行号
-        selected_row_index = st.session_state["nsga_results_editor"]["selection"]["rows"][0]
-        selected_prop = results_df.iloc[selected_row_index]['proportions']
+    # 显示方案对比表格
+    display_df = results_df.drop(columns=['proportions']).round({
+        '含量偏离度': 4,
+        '相似度': 4,
+        f'产出_{col_map["gg_g"]}': 4,
+        f'产出_{col_map["ga_g"]}': 4,
+    })
 
-        used_indices = np.where(selected_prop > 0)[0]
-        used_batch_ids = selected_data.index[used_indices]
-        used_proportions = selected_prop[used_indices]
-        used_weights = used_proportions * total_mix_amount
+    # 高亮选中的行
+    styled_df = display_df.style.apply(
+        lambda x: ['background-color: #ffeb3b' if x.name == selected_solution_index else '' for _ in x],
+        axis=1
+    )
 
-        details_df = pd.DataFrame({
-            '批次编号': used_batch_ids,
-            '混合比例': used_proportions,
-            '推荐用量 (克)': used_weights
-        })
-        st.table(details_df.style.format({
-            '混合比例': "{:.4f}",
-            '推荐用量 (克)': "{:.2f}",
-        }))
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
-    except (KeyError, IndexError):
-        st.info("请在上方表格中点击任意一行来查看该方案的详细配比。")
+    # --- 4. 显示选中方案的详细配比 ---
+    st.write(f"**方案_{selected_solution_index + 1} 的详细配比**")
+
+    selected_prop = results_df.iloc[selected_solution_index]['proportions']
+    used_indices = np.where(selected_prop > 0.001)[0]
+
+    # 使用 .iloc 进行整数索引访问
+    used_batch_ids = selected_data.index[used_indices]  # 获取批次ID
+    used_proportions = selected_prop[used_indices]
+    used_weights = used_proportions * total_mix_amount
+
+    # 详细配比表
+    details_df = pd.DataFrame({
+        '批次编号': used_batch_ids,
+        '混合比例': used_proportions,
+        '推荐用量 (克)': used_weights,
+        '质量评分': selected_data.iloc[used_indices]['Rubric_Score']  # 使用 .iloc
+    })
+
+    st.dataframe(details_df.style.format({
+        '混合比例': "{:.4f}",
+        '推荐用量 (克)': "{:.2f}",
+        '质量评分': "{:.3f}",
+    }), use_container_width=True)
+
+    # --- 5. 选中方案的可视化分析 ---
+    st.write(f"**方案_{selected_solution_index + 1} 的配比可视化**")
+
+    # 创建配比饼图和柱状图
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+    # 饼图：批次比例
+    if len(used_batch_ids) <= 8:
+        pie_labels = [f"Batch_{bid}" for bid in used_batch_ids]
+        pie_values = used_proportions
+    else:
+        # 如果批次太多，只显示前7个，其他合并
+        sorted_indices = np.argsort(used_proportions)[::-1]
+        top_7_props = used_proportions[sorted_indices[:7]]
+        top_7_labels = [f"Batch_{used_batch_ids[i]}" for i in sorted_indices[:7]]
+        other_prop = np.sum(used_proportions[sorted_indices[7:]])
+
+        pie_values = np.append(top_7_props, other_prop)
+        pie_labels = top_7_labels + ["Others"]
+
+    wedges, texts, autotexts = ax1.pie(pie_values, labels=pie_labels, autopct='%1.1f%%',
+                                       startangle=90, textprops={'fontsize': 10})
+    ax1.set_title(f'Batch Usage Proportion - Solution {selected_solution_index + 1}', fontsize=14)
+
+    # 柱状图：批次用量
+    bars = ax2.bar(range(len(used_batch_ids)), used_weights,
+                   color=plt.cm.Set3(np.linspace(0, 1, len(used_batch_ids))),
+                   alpha=0.8, edgecolor='black')
+    ax2.set_title(f'Batch Weight Distribution - Solution {selected_solution_index + 1}', fontsize=14)
+    ax2.set_xlabel('Batch Index', fontsize=12)
+    ax2.set_ylabel('Weight (grams)', fontsize=12)
+    ax2.set_xticks(range(len(used_batch_ids)))
+    ax2.set_xticklabels([f"B{i + 1}" for i in range(len(used_batch_ids))], rotation=45)
+
+    # 添加数值标注
+    for bar in bars:
+        height = bar.get_height()
+        if height > max(used_weights) * 0.05:
+            ax2.text(bar.get_x() + bar.get_width() / 2., height + max(used_weights) * 0.01,
+                     f'{height:.1f}', ha='center', va='bottom', fontsize=10)
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # --- 6. 方案比较分析 ---
+    if len(results_df) > 1:
+        st.write("**多方案对比分析**")
+
+        # 创建雷达图比较不同方案
+        if len(results_df) >= 3:
+            fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection='polar'))
+
+            # 选择前3个方案进行比较
+            compare_solutions = results_df.head(3)
+            metrics = ['含量偏离度', '相似度', '使用的批次数']
+
+            # 标准化数据用于雷达图
+            normalized_data = []
+            for _, row in compare_solutions.iterrows():
+                norm_deviation = 1 - (row['含量偏离度'] / results_df['含量偏离度'].max())  # 越小越好，所以取反
+                norm_similarity = row['相似度'] / results_df['相似度'].max()  # 越大越好
+                norm_batches = 1 - (row['使用的批次数'] / results_df['使用的批次数'].max())  # 越少越好，所以取反
+                normalized_data.append([norm_deviation, norm_similarity, norm_batches])
+
+            angles = np.linspace(0, 2 * np.pi, len(metrics), endpoint=False).tolist()
+            angles += angles[:1]  # 闭合图形
+
+            colors = ['red', 'blue', 'green']
+            for i, (data, color) in enumerate(zip(normalized_data, colors)):
+                data += data[:1]  # 闭合数据
+                ax.plot(angles, data, color=color, linewidth=2, label=f'Solution {i + 1}')
+                ax.fill(angles, data, color=color, alpha=0.25)
+
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(['Low Deviation', 'High Similarity', 'Few Batches'])
+            ax.set_ylim(0, 1)
+            ax.set_title("Multi-Solution Comparison (Radar Chart)", size=16, pad=20)
+            ax.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
+
+            plt.tight_layout()
+            st.pyplot(fig)
 
 
 # ##############################################################################
@@ -2078,10 +1972,10 @@ def create_optimization_visualization_english(result, selected_data, col_map, dr
     st.pyplot(fig)
 
 
-def display_successful_result_universal_enhanced_english(result, selected_data, total_mix_amount, col_map,
+def display_successful_result_universal_enhanced(result, selected_data, total_mix_amount, col_map,
                                                          constraints_dict,
                                                          fingerprint_options, drug_type, target_contents=None):
-    """增强版结果显示函数 - 英文标签版本"""
+    """增强版结果显示函数，使用英文标签"""
     st.subheader("★ 智能混批推荐方案 ★", anchor=False)
     st.success("成功找到最优混合方案！", icon="🎉")
 
@@ -2119,7 +2013,7 @@ def display_successful_result_universal_enhanced_english(result, selected_data, 
     significant_batches = recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01]
     st.dataframe(significant_batches.round(2), use_container_width=True)
 
-    # 调用英文版优化结果可视化函数
+    # 调用英文版可视化函数
     create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount)
 
     # 约束达标情况
@@ -2184,13 +2078,6 @@ def display_successful_result_universal_enhanced_english(result, selected_data, 
         ax2.tick_params(axis='both', which='major', labelsize=16)
         ax2.grid(True, alpha=0.3)
 
-        # 添加数值标注
-        for bars in [bars1, bars2]:
-            for bar in bars:
-                height = bar.get_height()
-                ax2.text(bar.get_x() + bar.get_width() / 2., height + max(max(required_vals), max(actual_vals)) * 0.01,
-                         f'{height:.3f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
-
         plt.tight_layout()
         st.pyplot(fig)
 
@@ -2199,7 +2086,7 @@ def display_successful_result_universal_enhanced_english(result, selected_data, 
 
     # 目标达成情况可视化
     if target_contents:
-        st.subheader("🎯 目标含量达成情况（）")
+        st.subheader("🎯 目标含量达成情况")
         target_data = []
         target_names = []
         actual_values = []
@@ -2257,19 +2144,13 @@ def display_successful_result_universal_enhanced_english(result, selected_data, 
             bars = ax2.bar(target_names, deviations, color=colors, alpha=0.8, edgecolor='black')
             ax2.set_xlabel('Indicators', fontsize=18)
             ax2.set_ylabel('Deviation (%)', fontsize=18)
-            ax2.set_title('Target Achievement Deviation Percentage', fontsize=20, pad=20)
-            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, linewidth=2, label='Excellent Line (5%)')
-            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, linewidth=2, label='Good Line (10%)')
+            ax2.set_title('Target Achievement Deviation', fontsize=20, pad=20)
+            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, linewidth=2, label='Excellent (5%)')
+            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, linewidth=2, label='Good (10%)')
             ax2.tick_params(axis='both', which='major', labelsize=16)
             ax2.grid(True, alpha=0.3)
-
-            # 添加数值标注
-            for bar, deviation in zip(bars, deviations):
-                height = bar.get_height()
-                ax2.text(bar.get_x() + bar.get_width() / 2., height + max(deviations) * 0.01,
-                         f'{deviation:.1f}%', ha='center', va='bottom', fontsize=14, fontweight='bold')
-
             ax2.legend(fontsize=16)
+
             plt.xticks(rotation=45)
             plt.tight_layout()
             st.pyplot(fig)
@@ -2413,92 +2294,6 @@ def run_hybrid_optimization_universal(selected_data, total_mix_amount, col_map, 
     return result
 
 
-def display_successful_result_universal(result, selected_data, total_mix_amount, col_map, constraints_dict,
-                                        fingerprint_options, drug_type, target_contents=None):
-    """通用结果显示函数，支持甘草和其他药物模式"""
-    st.subheader("★ 智能混批推荐方案 ★", anchor=False)
-    st.success("成功找到最优混合方案！", icon="🎉")
-
-    if st.session_state.current_mode == "成本最优":
-        st.metric("预期总成本 (元)", f"{(result.fun * total_mix_amount):.2f}")
-    else:
-        if drug_type == '甘草':
-            ml_score = -result.fun
-            st.metric("预期最高ML Score (1-10分)", f"{ml_score:.2f}")
-        else:
-            quality_score = -result.fun
-            st.metric("预期质量评分", f"{quality_score:.4f}")
-
-    optimal_weights = result.x * total_mix_amount
-    recommendation_df = pd.DataFrame({'批次编号': selected_data.index, '推荐用量 (克)': optimal_weights})
-
-    # 只显示用量大于0.01克的批次
-    recommendation_df = recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01]
-    st.dataframe(recommendation_df.round(2))
-
-    st.write("**约束指标达标情况:**")
-    status_data = []
-
-    # 显示约束达标情况
-    for key, min_val in constraints_dict.items():
-        col_name = col_map.get(key)
-        if col_name and col_name in selected_data.columns:
-            final_val = np.dot(result.x, selected_data[col_name].values)
-            status = "✓" if final_val >= min_val else "✗"
-
-            # 根据药物类型显示不同的指标名称
-            if drug_type == '甘草':
-                display_name = col_name
-            else:
-                # 对于通用模式，查找对应的自定义指标名称
-                if key.startswith('metric_'):
-                    metric_index = int(key.split('_')[1])
-                    if metric_index < len(st.session_state.custom_metrics_info):
-                        display_name = st.session_state.custom_metrics_info[metric_index]
-                    else:
-                        display_name = col_name
-                else:
-                    display_name = col_name
-
-            status_data.append([display_name, f"{final_val:.4f}", f"≥ {min_val}", status])
-
-    # 显示目标达成情况（如果启用了目标引导）
-    if target_contents:
-        st.write("**目标含量达成情况:**")
-        target_data = []
-        for key, target_val in target_contents.items():
-            col_name = col_map.get(key)
-            if col_name and col_name in selected_data.columns:
-                final_val = np.dot(result.x, selected_data[col_name].values)
-                deviation = abs(final_val - target_val)
-                deviation_percent = (deviation / target_val) * 100
-
-                # 获取显示名称
-                if drug_type == '甘草':
-                    display_name = col_name
-                else:
-                    if key.startswith('metric_'):
-                        metric_index = int(key.split('_')[1])
-                        if metric_index < len(st.session_state.custom_metrics_info):
-                            display_name = st.session_state.custom_metrics_info[metric_index]
-                        else:
-                            display_name = col_name
-                    else:
-                        display_name = col_name
-
-                target_data.append([display_name, f"{final_val:.4f}", f"{target_val:.4f}", f"{deviation_percent:.2f}%"])
-
-        st.table(pd.DataFrame(target_data, columns=['指标名称', '实际值', '目标值', '偏差百分比']))
-
-    # 指纹图谱约束结果
-    if fingerprint_options['enabled'] and fingerprint_options['target_profile'] is not None:
-        mix_f_profile = np.dot(result.x, selected_data[fingerprint_options['f_cols']].values)
-        final_sim = \
-        cosine_similarity(mix_f_profile.reshape(1, -1), fingerprint_options['target_profile'].reshape(1, -1))[0, 0]
-        status = "✓" if final_sim >= fingerprint_options['min_similarity'] else "✗"
-        status_data.append(["指纹图谱相似度", f"{final_sim:.4f}", f"≥ {fingerprint_options['min_similarity']}", status])
-
-    st.table(pd.DataFrame(status_data, columns=['指标名称', '预期值', '标准要求', '是否达标']))
 
 
 def provide_failure_analysis_universal_enhanced_english(selected_data, col_map, constraints_dict, fingerprint_options,
@@ -2665,12 +2460,36 @@ if 'app_state' not in st.session_state:
     st.session_state.app_state = 'AWAITING_UPLOAD'
 
 # --- 侧边栏 ---
+# --- 侧边栏 ---
 with st.sidebar:
     st.markdown("""
     <div style="text-align: center; margin-bottom: 2rem;">
         <h2 style="color: #2E7D32;">🌿 控制台</h2>
     </div>
     """, unsafe_allow_html=True)
+
+    # 药物类型选择移到侧边栏
+    st.markdown("### 🎯 分析模式")
+    drug_type_choice = st.radio(
+        "",
+        ['🌿 甘草专用模式', '🔬 通用分析模式'],
+        index=0 if st.session_state.drug_type == '甘草' else 1,
+        help="甘草模式：预设药典标准约束 | 通用模式：自定义约束条件"
+    )
+
+    # 处理模式切换逻辑
+    actual_drug_type = '甘草' if '甘草' in drug_type_choice else '其他药物'
+
+    # 如果切换了药物类型，重置相关状态
+    if actual_drug_type != st.session_state.drug_type:
+        st.session_state.drug_type = actual_drug_type
+        # 重置到上传阶段，但保留一些基本设置
+        keys_to_keep = ['drug_type', 'nsga_target_gg', 'nsga_target_ga']
+        keys_to_remove = [key for key in st.session_state.keys() if key not in keys_to_keep]
+        for key in keys_to_remove:
+            del st.session_state[key]
+        st.session_state.app_state = 'AWAITING_UPLOAD'
+        st.rerun()
 
     # 当前模式显示
     if st.session_state.drug_type == '甘草':
@@ -2694,92 +2513,17 @@ with st.sidebar:
     st.markdown("### 💡 使用提示")
     st.info("数据载入并匹配后可在下方与AI对话进行调试")
 
-    st.header("操作流程")
-    st.info("1. 选择药物类型\n2. 上传数据\n3. 设置单位\n4. 匹配列名\n5. 设置参数\n6. 选择批次\n7. 执行计算")
 
-    st.header("当前模式")
-    if st.session_state.drug_type == '甘草':
-        st.success("🌿 甘草专用模式\n预设核心约束:\n• 甘草苷 ≥ 4.5 mg/g\n• 甘草酸 ≥ 18 mg/g\n• 相似度 ≥ 0.9")
-    else:
-        st.info("🔬 通用模式\n约束条件将由用户自定义")
-
+    # 移除侧边栏中的重复优化参数设置，只保留基本信息显示
     if st.session_state.app_state == 'ANALYSIS_READY':
-        st.header("优化参数设置")
-
-        # --- 新增：优化引擎选择 ---
-        st.session_state.optimization_mode = st.radio(
-            "**选择优化引擎**",
-            ('质量/成本最优 (SLSQP)', '多目标均衡 (NSGA-II)'),
-            help="**SLSQP**: 快速找到单一目标的最佳解。\n**NSGA-II**: 寻找多个冲突目标间的一系列平衡解，功能更强大但计算稍慢。"
-        )
-
-        st.session_state.total_mix_amount = st.number_input("设置混合后产品总量 (克)", min_value=1.0, value=1000.0,
-                                                            step=100.0)
-
-        # --- 根据选择的引擎显示不同参数 ---
-        if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
-            st.subheader("SLSQP 参数")
-            fp_enabled = st.toggle("启用指纹图谱一致性约束", value=True, key="slsqp_fp")
-            min_sim = st.slider("最低指纹图谱相似度要求", 0.85, 1.0, 0.9, 0.005, key="slsqp_sim") if fp_enabled else 0
-            st.session_state.fingerprint_options = {'enabled': fp_enabled, 'min_similarity': min_sim}
-
-            # 新增：目标含量设置
-            st.subheader("含量目标优化")
-            enable_target_guidance = st.toggle("启用含量目标引导", value=True,
-                                               help="开启后将优化至接近目标含量，而非仅满足最低标准")
-
-            if enable_target_guidance:
-                gg_g_col = st.session_state.col_map.get('gg_g', '甘草苷')
-                ga_g_col = st.session_state.col_map.get('ga_g', '甘草酸')
-
-                target_gg = st.number_input(f"目标{gg_g_col}含量 (mg/g)",
-                                            min_value=4.5, value=5.0, step=0.1,
-                                            help="期望的甘草苷含量目标值")
-                target_ga = st.number_input(f"目标{ga_g_col}含量 (mg/g)",
-                                            min_value=18.0, value=20.0, step=0.5,
-                                            help="期望的甘草酸含量目标值")
-
-                st.session_state.target_contents = {
-                    'gg_g': target_gg,
-                    'ga_g': target_ga
-                }
+        if 'optimization_mode' in st.session_state:
+            if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+                st.info("🚀 SLSQP引擎\n单目标快速优化")
             else:
-                st.session_state.target_contents = None
+                st.info("🧬 NSGA-II引擎\n多目标进化优化")
 
-        elif st.session_state.optimization_mode == '多目标均衡 (NSGA-II)':
-            st.subheader("NSGA-II 目标设置")
-            st.info("请为NSGA-II引擎设定含量优化目标。")
-            gg_g_col = st.session_state.col_map.get('gg_g', '甘草苷')
-            ga_g_col = st.session_state.col_map.get('ga_g', '甘草酸')
-
-            # 使用 session_state 来保存默认值
-            if 'nsga_target_gg' not in st.session_state:
-                st.session_state.nsga_target_gg = 5.0
-            if 'nsga_target_ga' not in st.session_state:
-                st.session_state.nsga_target_ga = 2.0
-
-            target_gg = st.number_input(f"目标-{gg_g_col} (mg/g)", value=st.session_state.nsga_target_gg, format="%.4f")
-            target_ga = st.number_input(f"目标-{ga_g_col} (mg/g)", value=st.session_state.nsga_target_ga, format="%.4f")
-
-            st.subheader("NSGA-II 算法参数")
-            pop_size = st.slider("种群大小", 50, 300, 150, 10, help="每次迭代中个体的数量，越大搜索范围越广但越慢。")
-            gens = st.slider("迭代代数", 100, 1000, 400, 50, help="算法进化的总轮数，代数越多结果越好但越慢。")
-            num_batches = st.number_input("固定配方批次数 (0为不限制)", 0, 100, 20,
-                                          help="限制最终方案中包含的批次数量，0表示不限制。")
-            remove_extremes = st.checkbox("自动移除极端方案", value=True,
-                                          help="移除帕累托前沿两端的解，保留中间的折衷方案。")
-
-            st.session_state.nsga_params = {
-                'target_values': np.array([target_gg, target_ga]),
-                'population_size': pop_size,
-                'num_generations': gens,
-                'num_batches_to_select': num_batches,
-                'remove_extremes': remove_extremes,
-                'crossover_prob': 0.7,
-                'mutation_prob': 0.3,
-                'mutation_strength': 0.1,
-                'total_mix_amount': st.session_state.total_mix_amount
-            }
+        if 'total_mix_amount' in st.session_state:
+            st.metric("目标产量", f"{st.session_state.total_mix_amount}克")
 
 
 # --- GitHub API集成的聊天助手功能 ---
@@ -2888,7 +2632,7 @@ def call_github_models_api(user_message, system_prompt, api_key):
             ai_response = result['choices'][0]['message']['content']
             return f"🤖 **AI助手回复：**\n\n{ai_response}"
         elif response.status_code == 401:
-            return "❌ **API认证失败**：请检查GitHub API密钥是否正确且有效。"
+            return "❌ **API认证失败**：请检查API密钥是否正确且有效。"
         elif response.status_code == 400:
             error_detail = response.json() if response.headers.get('content-type', '').startswith(
                 'application/json') else response.text
@@ -2901,7 +2645,7 @@ def call_github_models_api(user_message, system_prompt, api_key):
     except requests.exceptions.Timeout:
         return "⏰ **请求超时**：网络连接较慢，请稍后重试。"
     except requests.exceptions.ConnectionError:
-        return "🔌 **连接错误**：无法连接到GitHub API，请检查网络连接。"
+        return "🔌 **连接错误**：无法连接到API，请检查网络连接。"
     except Exception as e:
         return f"❌ **未知错误**：{str(e)[:200]}"
 
@@ -3162,11 +2906,11 @@ def render_chat_interface():
             # API密钥输入框 - 新增
             st.write("**🔑 API设置：**")
             api_key_input = st.text_input(
-                "GitHub API密钥",
+                "API密钥",
                 value=st.session_state.github_api_key,
                 type="password",
-                placeholder="输入您的GitHub API密钥...",
-                help="请输入您的GitHub Models API密钥以启用AI对话功能"
+                placeholder="输入您的API密钥...",
+                help="请输入您的API密钥以启用AI对话功能，密钥需向开发者申请"
             )
 
             if api_key_input != st.session_state.github_api_key:
@@ -3187,7 +2931,7 @@ def render_chat_interface():
                     if st.session_state.github_api_key:  # 检查API密钥
                         process_chat_message(suggestion)
                     else:
-                        st.error("请先输入GitHub API密钥")
+                        st.error("请先输入API密钥")
 
             # 自定义输入
             st.write("**💬 自定义问题：**")
@@ -3200,7 +2944,7 @@ def render_chat_interface():
 
             if st.button("📤 发送", key="send_chat", use_container_width=True, type="primary"):
                 if not st.session_state.github_api_key:  # 检查API密钥
-                    st.error("请先输入GitHub API密钥")
+                    st.error("请先输入API密钥")
                 elif user_input.strip():
                     process_chat_message(user_input.strip())
                 else:
@@ -3225,7 +2969,7 @@ def process_chat_message(user_message):
     """处理聊天消息"""
     # 检查API密钥 - 新增
     if not st.session_state.github_api_key.strip():
-        st.error("请先在侧边栏输入您的GitHub API密钥")
+        st.error("请先在侧边栏输入您的API密钥")
         return
 
     # 添加用户消息
@@ -3280,6 +3024,7 @@ if st.session_state.app_state == 'AWAITING_UPLOAD':
         st.session_state.uploaded_file = uploaded_file
         st.session_state.app_state = 'AWAITING_UNIT_SELECTION'
         st.rerun()
+    render_chat_interface()
 
 elif st.session_state.app_state == 'AWAITING_UNIT_SELECTION':
     create_progress_tracker()
@@ -3292,6 +3037,7 @@ elif st.session_state.app_state == 'AWAITING_UNIT_SELECTION':
         st.session_state.app_state = 'AWAITING_MAPPING'
         st.rerun()
         render_chat_interface()
+    render_chat_interface()
 
 
 
@@ -3614,15 +3360,214 @@ elif st.session_state.app_state == 'CONSTRAINT_SETTING':
 elif st.session_state.app_state == 'ANALYSIS_READY':
     st.header("4. 选择批次并执行优化", anchor=False)
 
+    # 创建两个引擎选择卡片
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="metric-card" style="height: 180px; padding: 1.5rem;">
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 1rem;">SLSQP 引擎</div>
+                <div style="font-size: 0.9rem; color: #666; line-height: 1.5;">
+                    • 快速单目标优化，通常几秒钟得到结果
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        slsqp_selected = st.button("🚀 选择 SLSQP", key="select_slsqp", use_container_width=True, type="primary")
+
+    with col2:
+        st.markdown("""
+        <div class="metric-card" style="height: 180px; padding: 1.5rem;">
+            <div style="text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🧬</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: #2E7D32; margin-bottom: 1rem;">NSGA-II 引擎</div>
+                <div style="font-size: 0.9rem; color: #666; line-height: 1.5;">
+                    • 多目标进化算法，计算全面但需要更多时间
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        nsga2_selected = st.button("🧬 选择 NSGA-II", key="select_nsga2", use_container_width=True)
+
+    # 处理引擎选择
+    if slsqp_selected:
+        st.session_state.optimization_mode = '质量/成本最优 (SLSQP)'
+        st.rerun()
+    elif nsga2_selected:
+        st.session_state.optimization_mode = '多目标均衡 (NSGA-II)'
+        st.rerun()
+
+    # 显示当前选择的引擎状态
+    if 'optimization_mode' in st.session_state:
+        if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+            st.success("✅ 已选择 SLSQP 引擎 - 单目标快速优化", icon="🚀")
+        else:
+            st.success("✅ 已选择 NSGA-II 引擎 - 多目标进化优化", icon="🧬")
+
+        # 优化参数设置区域
+        st.markdown("---")
+        st.subheader("📊 优化参数设置")
+
+        # 基础参数
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.total_mix_amount = st.number_input(
+                "设置混合后产品总量 (克)",
+                min_value=1.0,
+                value=st.session_state.get('total_mix_amount', 1000.0),
+                step=100.0,
+                help="最终混合产品的总重量"
+            )
+
+        # 根据选择的引擎显示不同参数
+        if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+            with col2:
+                fp_enabled = st.toggle(
+                    "启用指纹图谱一致性约束",
+                    value=st.session_state.get('fingerprint_enabled', True),
+                    key="main_slsqp_fp",
+                    help="是否考虑指纹图谱相似度作为约束条件"
+                )
+
+            if fp_enabled:
+                min_sim = st.slider(
+                    "最低指纹图谱相似度要求",
+                    0.85, 1.0,
+                    st.session_state.get('min_similarity', 0.9),
+                    0.005,
+                    key="main_slsqp_sim",
+                    help="混合后产品与目标指纹图谱的最低相似度"
+                )
+            else:
+                min_sim = 0
+
+            st.session_state.fingerprint_options = {'enabled': fp_enabled, 'min_similarity': min_sim}
+
+            # 含量目标设置
+            st.markdown("#### 🎯 含量目标优化")
+            enable_target_guidance = st.toggle(
+                "启用含量目标引导",
+                value=st.session_state.get('main_target_guidance_enabled', True),
+                help="开启后将优化至接近目标含量，而非仅满足最低标准"
+            )
+
+            if enable_target_guidance:
+                col1, col2 = st.columns(2)
+                gg_g_col = st.session_state.col_map.get('gg_g', '甘草苷')
+                ga_g_col = st.session_state.col_map.get('ga_g', '甘草酸')
+
+                with col1:
+                    target_gg = st.number_input(
+                        f"目标{gg_g_col}含量 (mg/g)",
+                        min_value=4.5,
+                        value=st.session_state.get('main_target_gg', 5.0),
+                        step=0.1,
+                        help="期望的甘草苷含量目标值"
+                    )
+                with col2:
+                    target_ga = st.number_input(
+                        f"目标{ga_g_col}含量 (mg/g)",
+                        min_value=18.0,
+                        value=st.session_state.get('main_target_ga', 20.0),
+                        step=0.5,
+                        help="期望的甘草酸含量目标值"
+                    )
+
+                st.session_state.target_contents = {
+                    'gg_g': target_gg,
+                    'ga_g': target_ga
+                }
+            else:
+                st.session_state.target_contents = None
+
+        elif st.session_state.optimization_mode == '多目标均衡 (NSGA-II)':
+            st.markdown("#### 🎯 NSGA-II 目标设置")
+            st.info("请为NSGA-II引擎设定含量优化目标。算法将寻找含量偏差与相似度之间的最佳平衡点。")
+
+            col1, col2 = st.columns(2)
+            gg_g_col = st.session_state.col_map.get('gg_g', '甘草苷')
+            ga_g_col = st.session_state.col_map.get('ga_g', '甘草酸')
+
+            with col1:
+                target_gg = st.number_input(
+                    f"目标-{gg_g_col} (mg/g)",
+                    value=st.session_state.get('nsga_target_gg', 5.0),
+                    format="%.4f",
+                    help="NSGA-II算法的甘草苷目标含量"
+                )
+            with col2:
+                target_ga = st.number_input(
+                    f"目标-{ga_g_col} (mg/g)",
+                    value=st.session_state.get('nsga_target_ga', 20.0),
+                    format="%.4f",
+                    help="NSGA-II算法的甘草酸目标含量"
+                )
+
+            st.markdown("#### ⚙️ NSGA-II 算法参数")
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                pop_size = st.slider(
+                    "种群大小",
+                    50, 300,
+                    st.session_state.get('nsga_pop_size', 150),
+                    10,
+                    help="每次迭代中个体的数量，越大搜索范围越广但越慢"
+                )
+            with col2:
+                gens = st.slider(
+                    "迭代代数",
+                    100, 1000,
+                    st.session_state.get('nsga_generations', 400),
+                    50,
+                    help="算法进化的总轮数，代数越多结果越好但越慢"
+                )
+            with col3:
+                num_batches = st.number_input(
+                    "固定配方批次数 (0为不限制)",
+                    0, 100,
+                    st.session_state.get('nsga_num_batches', 20),
+                    help="限制最终方案中包含的批次数量，0表示不限制"
+                )
+
+            remove_extremes = st.checkbox(
+                "自动移除极端方案",
+                value=st.session_state.get('nsga_remove_extremes', True),
+                help="移除帕累托前沿两端的解，保留中间的折衷方案"
+            )
+
+            # 保存NSGA-II参数
+            st.session_state.nsga_params = {
+                'target_values': np.array([target_gg, target_ga]),
+                'population_size': pop_size,
+                'num_generations': gens,
+                'num_batches_to_select': num_batches,
+                'remove_extremes': remove_extremes,
+                'crossover_prob': 0.7,
+                'mutation_prob': 0.3,
+                'mutation_strength': 0.1,
+                'total_mix_amount': st.session_state.total_mix_amount
+            }
+
+            # 时间估算
+            estimated_time = (pop_size * gens) / 20000  # 粗略估算
+            st.info(f"⏱️ 预计计算时间：约 {estimated_time:.1f} 分钟")
+
     # 添加数据可视化选项
-    with st.expander("📊 查看数据分析仪表板", expanded=False):
+    st.markdown("---")
+    with st.expander("📊 查看总数据分析仪表板", expanded=False):
         analysis_method = st.radio(
             "选择显示方式：",
             ["英文标签（推荐）", "中文标签", "下载字体并使用中文"],
-            index=0
+            index=0,
+            help="推荐使用英文标签以避免字体显示问题"
         )
 
-        if st.button("生成数据分析报告"):
+        if st.button("📈 生成数据分析报告", use_container_width=True, type="secondary"):
             if analysis_method == "英文标签（推荐）":
                 create_charts_with_english_labels(st.session_state.df_processed,
                                                   st.session_state.col_map,
@@ -3642,11 +3587,18 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
                 create_batch_quality_dashboard_chinese(st.session_state.df_processed,
                                                        st.session_state.col_map,
                                                        st.session_state.drug_type)
-    if st.button("返回并上传新文件"):
+
+    # 返回功能
+    st.markdown("---")
+    if st.button("🔄 返回并上传新文件", use_container_width=True):
         for key in list(st.session_state.keys()):
             if key not in ['nsga_target_gg', 'nsga_target_ga', 'drug_type']:  # 保留目标值和药物类型记忆
                 del st.session_state[key]
         st.rerun()
+
+    # 批次选择和编辑部分
+    st.markdown("---")
+    st.subheader("📋 批次选择与编辑")
 
     df_to_edit = st.session_state.df_processed.copy()
     col_map = st.session_state.col_map
@@ -3692,8 +3644,10 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
     cost_col_name = col_map.get('cost', '模拟成本')
     df_display.insert(2, "单位成本 (元/克)", df_to_edit[cost_col_name])
 
-    # 添加全选/取消全选功能
-    col1, col2, col3 = st.columns([1, 1, 4])
+    # 添加批次选择工具
+    st.markdown("#### 🛠️ 批次选择工具")
+    col1, col2, col3, col4 = st.columns(4)
+
     with col1:
         if st.button("🔄 全选", use_container_width=True, help="选择所有批次"):
             st.session_state.batch_selection_state = [True] * len(df_display)
@@ -3706,6 +3660,23 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
             st.session_state.force_selection_update = True
             st.rerun()
 
+    with col3:
+        if st.button("⭐ 选择高质量", use_container_width=True, help="自动选择质量评分前50%的批次"):
+            threshold = df_display['Rubric_Score'].quantile(0.5)
+            selection_state = (df_display['Rubric_Score'] >= threshold).tolist()
+            st.session_state.batch_selection_state = selection_state
+            st.session_state.force_selection_update = True
+            st.rerun()
+
+    with col4:
+        if st.button("💰 选择经济型", use_container_width=True, help="自动选择成本较低的批次"):
+            threshold = df_display['单位成本 (元/克)'].quantile(0.5)
+            selection_state = (df_display['单位成本 (元/克)'] <= threshold).tolist()
+            st.session_state.batch_selection_state = selection_state
+            st.session_state.force_selection_update = True
+            st.rerun()
+
+    # 批次数据编辑表格
     edited_df = st.data_editor(
         df_display.round(4),
         hide_index=False,
@@ -3727,79 +3698,111 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
 
     # 显示当前选择状态
     selected_count = sum(edited_df["选择"])
+    inventory_missing = edited_df["库存量 (克)"].isna().sum()
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("已选择批次", f"{selected_count}/{len(df_display)}")
+    with col2:
+        st.metric("缺少库存信息", inventory_missing)
     with col3:
-        st.info(f"当前已选择 {selected_count}/{len(df_display)} 个批次")
+        if selected_count > 0:
+            avg_quality = edited_df[edited_df["选择"]]["Rubric_Score"].mean()
+            st.metric("选中批次平均质量", f"{avg_quality:.3f}")
 
-        # 检查库存输入情况
-        inventory_missing = edited_df["库存量 (克)"].isna().sum()
-        if inventory_missing > 0:
-            st.warning(f"还有 {inventory_missing} 个批次未设置库存量")
-
-    # 其余代码保持不变...
+    # 验证和提醒
+    if inventory_missing > 0:
+        st.warning(f"⚠️ 还有 {inventory_missing} 个批次未设置库存量，请在表格中补充完整")
 
     selected_rows = edited_df[edited_df.选择]
     selected_indices = selected_rows.index.tolist()
-    render_chat_interface()
 
+    # 优化计算按钮
+    if 'optimization_mode' in st.session_state:
+        st.markdown("---")
+        st.subheader("🚀 执行优化计算")
 
-
-    # 在主界面的优化计算部分：
-    if st.button("计算最优混合方案", type="primary", use_container_width=True):
-        if len(selected_indices) < 1:
-            st.warning("请至少选择一个批次。", icon="⚠️")
+        # 计算按钮样式根据引擎类型调整
+        if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+            button_text = "🚀 执行 SLSQP 优化计算"
+            button_help = "快速单目标优化，通常几秒钟完成"
         else:
-            full_selected_data = df_to_edit.loc[selected_indices].copy()
-            full_selected_data['库存量 (克)'] = selected_rows['库存量 (克)']
-            cost_col_name = col_map.get('cost', '模拟成本')
-            if cost_col_name in selected_rows.columns:
-                full_selected_data[cost_col_name] = selected_rows['单位成本 (元/克)']
+            button_text = "🧬 执行 NSGA-II 多目标优化"
+            button_help = "多目标进化算法，可能需要几分钟时间"
 
-            # 根据药物类型设置约束
-            if st.session_state.drug_type == '甘草':
-                MINIMUM_STANDARDS = {"gg_g": 4.5, "ga_g": 18, "sim": 0.9}
+        if st.button(button_text, type="primary", use_container_width=True, help=button_help):
+            if len(selected_indices) < 1:
+                st.warning("请至少选择一个批次。", icon="⚠️")
+            elif inventory_missing > 0:
+                st.error("请先为所有批次设置库存量。", icon="❌")
             else:
-                MINIMUM_STANDARDS = st.session_state.custom_constraints
+                full_selected_data = df_to_edit.loc[selected_indices].copy()
+                full_selected_data['库存量 (克)'] = selected_rows['库存量 (克)']
+                cost_col_name = col_map.get('cost', '模拟成本')
+                if cost_col_name in selected_rows.columns:
+                    full_selected_data[cost_col_name] = selected_rows['单位成本 (元/克)']
 
-            # 根据选择的模式调用不同的引擎
-            if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+                # 根据药物类型设置约束
                 if st.session_state.drug_type == '甘草':
-                    top_20_percent = df_to_edit['Rubric_Score'].quantile(0.8)
-                    high_quality_batches = df_to_edit[df_to_edit['Rubric_Score'] >= top_20_percent]
+                    MINIMUM_STANDARDS = {"gg_g": 4.5, "ga_g": 18, "sim": 0.9}
                 else:
-                    high_quality_batches = df_to_edit
+                    MINIMUM_STANDARDS = st.session_state.custom_constraints
 
-                target_profile = high_quality_batches[col_map['f_cols']].mean().values if col_map.get(
-                    'f_cols') else None
-                fingerprint_options = {**st.session_state.fingerprint_options, 'target_profile': target_profile,
-                                       'f_cols': col_map.get('f_cols', [])}
+                # 根据选择的模式调用不同的引擎
+                if st.session_state.optimization_mode == '质量/成本最优 (SLSQP)':
+                    if st.session_state.drug_type == '甘草':
+                        top_20_percent = df_to_edit['Rubric_Score'].quantile(0.8)
+                        high_quality_batches = df_to_edit[df_to_edit['Rubric_Score'] >= top_20_percent]
+                    else:
+                        high_quality_batches = df_to_edit
 
-                with st.spinner('正在执行SLSQP单目标优化...'):
-                    result = run_hybrid_optimization_universal(
-                        full_selected_data, st.session_state.total_mix_amount, col_map, MINIMUM_STANDARDS,
-                        fingerprint_options, st.session_state.drug_type, st.session_state.get('target_contents')
-                    )
+                    target_profile = high_quality_batches[col_map['f_cols']].mean().values if col_map.get(
+                        'f_cols') else None
+                    fingerprint_options = {**st.session_state.fingerprint_options, 'target_profile': target_profile,
+                                           'f_cols': col_map.get('f_cols', [])}
 
-                if result.success:
-                    display_successful_result_universal_enhanced_english(
-                        result, full_selected_data, st.session_state.total_mix_amount,
-                        col_map, MINIMUM_STANDARDS, fingerprint_options,
-                        st.session_state.drug_type, st.session_state.get('target_contents')
-                    )
-                else:
-                    provide_failure_analysis_universal_enhanced_english(
-                        full_selected_data, col_map, MINIMUM_STANDARDS,
-                        fingerprint_options, st.session_state.drug_type
-                    )
-            elif st.session_state.optimization_mode == '多目标均衡 (NSGA-II)':
-                with st.spinner('正在执行NSGA-II多目标进化计算，请稍候...'):
-                    solutions, values = run_nsga2_optimization(full_selected_data, col_map,
-                                                               st.session_state.nsga_params)
+                    with st.spinner('🚀 正在执行SLSQP单目标优化...'):
+                        result = run_hybrid_optimization_universal(
+                            full_selected_data, st.session_state.total_mix_amount, col_map, MINIMUM_STANDARDS,
+                            fingerprint_options, st.session_state.drug_type, st.session_state.get('target_contents')
+                        )
 
-                if solutions:
-                    display_nsga2_results(solutions, values, full_selected_data, col_map,
-                                          st.session_state.total_mix_amount)
-                else:
-                    st.error("NSGA-II 优化失败。")
-                    st.write("可能的原因：")
-                    st.write("- 您选择的批次组合无法在满足所有硬性约束（最低含量、库存）的前提下生成任何有效方案。")
-                    st.write("- 尝试增加批次选择，特别是那些各项指标更均衡的批次，或检查库存量设置。")
+                    if result.success:
+                        display_successful_result_universal_enhanced(
+                            result, full_selected_data, st.session_state.total_mix_amount,
+                            col_map, MINIMUM_STANDARDS, fingerprint_options,
+                            st.session_state.drug_type, st.session_state.get('target_contents')
+                        )
+                    else:
+                        provide_failure_analysis_universal_enhanced_english(
+                            full_selected_data, col_map, MINIMUM_STANDARDS,
+                            fingerprint_options, st.session_state.drug_type
+                        )
+
+                elif st.session_state.optimization_mode == '多目标均衡 (NSGA-II)':
+                    with st.spinner('🧬 正在执行NSGA-II多目标进化计算，请稍候...'):
+                        progress_container = st.container()
+                        solutions, values = run_nsga2_optimization(full_selected_data, col_map,
+                                                                   st.session_state.nsga_params)
+
+                    if solutions:
+                        display_nsga2_results(solutions, values, full_selected_data, col_map,
+                                              st.session_state.total_mix_amount)
+                    else:
+                        st.error("🚫 NSGA-II 优化失败")
+                        st.markdown("""
+                        **可能的原因：**
+                        - 选择的批次组合无法满足所有硬性约束
+                        - 库存量设置过低
+                        - 目标值设置不合理
+
+                        **建议解决方案：**
+                        1. 增加批次选择，特别是质量均衡的批次
+                        2. 检查并调整库存量设置
+                        3. 适当放宽目标含量要求
+                        4. 尝试使用SLSQP引擎进行初步测试
+                        """)
+    else:
+        st.info("🎯 请先选择优化引擎，然后进行批次选择和参数设置")
+
+    render_chat_interface()
