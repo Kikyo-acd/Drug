@@ -1,5 +1,21 @@
-# 在文件最开头添加，在所有其他代码之前
 import streamlit as st
+from PIL import Image
+import os
+
+# 在主标题前添加团队标志
+if os.path.exists("logo.png"):
+    logo = Image.open("ogo.png")
+
+    # 方式1：居中显示大标志
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(logo, width=300, caption="黄安东团队")
+
+    # 或方式2：在侧边栏显示
+    with st.sidebar:
+        st.image(logo, width=200)
+        st.markdown("---")
+
 
 # 页面配置 - 必须在最开头
 st.set_page_config(
@@ -6050,3 +6066,4 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
