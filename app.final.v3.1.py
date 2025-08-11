@@ -47,13 +47,6 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
         # 如果没有logo，显示原来的标题
         create_animated_header(title, subtitle, icon)
 
-# 替换您现有的标题调用
-create_header_with_logo(
-    "药络智控——中药多组分智能均化软件",
-    "专业的批次混合优化解决方案",
-    "🌿"
-)
-
 # 文件名: app.py
 # 版本: v5.1 - BugFix
 # 描述: 修复了NSGA-II在特定条件下selection函数索引越界的错误
@@ -6090,6 +6083,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
