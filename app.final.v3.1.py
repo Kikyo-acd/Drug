@@ -2,16 +2,58 @@ import os
 from PIL import Image
 import streamlit as st
 
+import streamlit as st
+from PIL import Image
+import os
+
+# 检查是否有自定义图标
+favicon_path = "logo.png"  # 或 "favicon.ico"
+if os.path.exists(favicon_path):
+    favicon_image = Image.open(favicon_path)
+    st.set_page_config(
+        page_title="多组分智能均化 - 药络智控Team作品",
+        page_icon=favicon_image,  # 使用自定义图标
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+else:
+    # 如果没有自定义图标，使用emoji
+    st.set_page_config(
+        page_title="药络智控 - 黄安东团队",
+        page_icon="🌿",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+
+def create_animated_header(title, subtitle="", icon="🌿"):
+    """创建带动画的标题组件"""
+    st.markdown(f"""
+    <div style="text-align: center; margin: 2rem 0; animation: slideInUp 0.8s ease-out;">
+        <div style="font-size: 4rem; animation: float 3s ease-in-out infinite;">{icon}</div>
+        <h1 style="
+            background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 1rem 0;
+        ">{title}</h1>
+        {f'<p style="font-size: 1.2rem; color: #666; animation: slideInUp 1s ease-out;">{subtitle}</p>' if subtitle else ''}
+    </div>
+    """, unsafe_allow_html=True)
+
 def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png"):
     """创建带团队标志的并列标题"""
-    
+
     # 检查logo文件是否存在
     logo_exists = os.path.exists(logo_path)
-    
+
     if logo_exists:
         # 创建两列布局：左侧logo，右侧标题
         col1, col2 = st.columns([1, 3])  # 比例1:3
-        
+
         with col1:
             # 左侧：团队标志
             try:
@@ -25,7 +67,7 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
                 """, unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"无法加载logo: {e}")
-        
+
         with col2:
             # 右侧：主标题
             st.markdown(f"""
@@ -48,6 +90,7 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
     else:
         # 如果没有logo，显示原来的标题
         create_animated_header(title, subtitle, icon)
+
 
 create_header_with_logo(
     "药络智控——中药多组分智能均化软件",
@@ -542,6 +585,7 @@ def run_quick_performance_test():
         throughput = 1000 / elapsed_time if elapsed_time > 0 else 0
         st.metric("处理能力", f"{throughput:.0f} ops/s")
 
+
 def show_mini_chart():
     """显示迷你图表"""
     # 创建示例数据
@@ -611,6 +655,7 @@ def show_card_details(card_type):
                 show_visualization_content_compact()
             elif card_type == "precision":
                 show_precision_content_compact()
+
 
 def create_interactive_info_cards():
     """创建可交互的信息卡片 - 优化版布局"""
@@ -831,6 +876,7 @@ def show_precision_content_compact():
     if st.button("💻 立即计算", key="calc_compact", use_container_width=True):
         show_quick_calculation(total_amount, precision)
 
+
 def show_optimization_case():
     """显示优化案例"""
     st.markdown("""
@@ -983,7 +1029,6 @@ def show_precision_calculator(total_amount, precision_level):
     st.info(f"💡 在{precision_level}精度下，理论上最多可以使用{max_batches}个不同批次进行精确配比。")
 
 
-
 # 修改图表创建函数，增加字体检查
 def create_charts_with_chinese_fallback(df, col_map, drug_type):
     """创建图表，自动检测中文字体可用性"""
@@ -1108,6 +1153,7 @@ def diagnose_font_issues():
                 st.success("✅ 字体渲染测试通过")
             except Exception as e:
                 st.error(f"❌ 字体渲染失败: {e}")
+
 
 def create_chinese_text_image(text, font_size=24, color='black', bg_color='white'):
     """创建包含中文的图片"""
@@ -1371,7 +1417,6 @@ plt.rcParams['axes.unicode_minus'] = False
 # 设置seaborn样式
 sns.set_style("whitegrid")
 sns.set_palette("husl")
-
 
 # --- 新增：药物类型选择 ---
 if 'drug_type' not in st.session_state:
@@ -1807,24 +1852,8 @@ def apply_custom_css():
     </style>
     """, unsafe_allow_html=True)
 
-def create_animated_header(title, subtitle="", icon="🌿"):
-    """创建带动画的标题组件"""
-    st.markdown(f"""
-    <div style="text-align: center; margin: 2rem 0; animation: slideInUp 0.8s ease-out;">
-        <div style="font-size: 4rem; animation: float 3s ease-in-out infinite;">{icon}</div>
-        <h1 style="
-            background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50);
-            background-size: 200% 200%;
-            animation: gradientShift 3s ease infinite;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 3rem;
-            font-weight: 700;
-            margin: 1rem 0;
-        ">{title}</h1>
-        {f'<p style="font-size: 1.2rem; color: #666; animation: slideInUp 1s ease-out;">{subtitle}</p>' if subtitle else ''}
-    </div>
-    """, unsafe_allow_html=True)
+
+
 
 
 def create_floating_card(content, delay=0):
@@ -2200,7 +2229,7 @@ def export_excel_report():
             if 'optimization_result' in st.session_state:
                 result_obj = st.session_state.optimization_result.get('result')
                 selected_data = st.session_state.optimization_result.get('selected_data')
-                total_mix_amount = st.session_state.get('total_mix_amount', 1000) # 默认1000克
+                total_mix_amount = st.session_state.get('total_mix_amount', 1000)  # 默认1000克
 
                 if result_obj and selected_data is not None:
                     # 检查是否是NSGA-II结果
@@ -2214,7 +2243,7 @@ def export_excel_report():
                             'Recommended_Weight_g': weights,
                             'Proportion_Percent': proportions * 100,
                             'Rubric_Score': selected_data['Rubric_Score'],
-                            'ML_Score': selected_data.get('ML_Score', 5.0) # 安全获取ML_Score
+                            'ML_Score': selected_data.get('ML_Score', 5.0)  # 安全获取ML_Score
                         })
 
                         # 只显示实际使用的批次
@@ -2302,6 +2331,7 @@ def update_nsga2_progress_with_visualization(generation, population, values, pro
             st.pyplot(fig)
             plt.close()
 
+
 def add_keyboard_shortcuts():
     """添加键盘快捷键支持"""
     st.markdown("""
@@ -2371,6 +2401,7 @@ def apply_dark_theme():
     </style>
     """, unsafe_allow_html=True)
 
+
 # 在适当位置调用此函数
 
 def create_step_header(step_number, title, description=""):
@@ -2384,7 +2415,6 @@ def create_step_header(step_number, title, description=""):
         {f'<p style="color: #666; margin-left: 50px;">{description}</p>' if description else ''}
     </div>
     """, unsafe_allow_html=True)
-
 
 
 def create_progress_tracker():
@@ -2436,6 +2466,7 @@ def create_status_indicator(status, message, icon=""):
             {icon} <strong>{message}</strong>
         </div>
         """, unsafe_allow_html=True)
+
 
 # 添加功能卡片
 create_interactive_info_cards()
@@ -2545,7 +2576,6 @@ def crowding_distance(values, front):
     return distances
 
 
-
 def create_chinese_figure(nrows=1, ncols=1, figsize=None, title=None):
     """创建支持中文显示的matplotlib图形"""
     if figsize is None:
@@ -2580,6 +2610,7 @@ def set_chinese_labels(ax, title="", xlabel="", ylabel="", legend_labels=None):
     ax.grid(True, alpha=0.3, linestyle='--')
 
     return ax
+
 
 def selection(population, values, population_size):
     fronts = fast_non_dominated_sort(values)
@@ -3213,6 +3244,7 @@ def add_theme_toggle_simple():
             apply_dark_theme()
         # 明亮模式使用默认样式，不需要额外CSS
 
+
 def create_ingredient_analysis_charts(df, col_map, drug_type):
     """创建成分分析图表"""
     st.subheader("🧪 成分含量深度分析")
@@ -3507,9 +3539,6 @@ def show_data_analysis_dashboard():
         create_ingredient_analysis_charts_chinese(st.session_state.df_processed,
                                                   st.session_state.col_map,
                                                   st.session_state.drug_type)
-
-
-
 
 
 # --- NSGA-II 主执行函数 ---
@@ -3952,10 +3981,6 @@ def train_ml_model(_df, col_map):
     except Exception as e:
         st.error(f"机器学习模型训练失败：{str(e)}")
         return None, None
-
-
-
-
 
 
 def create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount):
@@ -4408,7 +4433,6 @@ def display_successful_result_universal_enhanced(result, selected_data, total_mi
             st.pyplot(fig)
 
 
-
 def run_hybrid_optimization_universal(selected_data, total_mix_amount, col_map, constraints_dict, fingerprint_options,
                                       drug_type, target_contents=None):
     """通用优化函数，支持甘草和其他药物"""
@@ -4502,8 +4526,6 @@ def run_hybrid_optimization_universal(selected_data, total_mix_amount, col_map, 
     result = minimize(objective_func, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints,
                       options={'disp': False, 'ftol': 1e-9})
     return result
-
-
 
 
 def provide_failure_analysis_universal_enhanced_english(selected_data, col_map, constraints_dict, fingerprint_options,
@@ -4611,6 +4633,7 @@ def provide_failure_analysis_universal_enhanced_english(selected_data, col_map, 
     st.write(
         "您选择的批次理论上可以满足各项标准，但无法找到一个具体的混合比例来同时满足所有约束。这通常发生在所选批次质量普遍偏科或库存不足的情况下。")
 
+
 def display_successful_result(result, selected_data, total_mix_amount, col_map, min_standards, fingerprint_options,
                               target_contents=None):
     """将成功的结果显示在界面上 (SLSQP) - 增加目标达成显示"""
@@ -4660,6 +4683,7 @@ def display_successful_result(result, selected_data, total_mix_amount, col_map, 
         status_data.append(["指纹图谱相似度", f"{final_sim:.4f}", f"≥ {fingerprint_options['min_similarity']}", status])
 
     st.table(pd.DataFrame(status_data, columns=['指标名称', '预期值', '标准要求', '是否达标']))
+
 
 # ##############################################################################
 # --- Streamlit 网页界面主程序 ---
@@ -4722,7 +4746,6 @@ with st.sidebar:
 
     st.markdown("### 💡 使用提示")
     st.info("数据载入并匹配后可在下方与AI对话进行调试")
-
 
     # 移除侧边栏中的重复优化参数设置，只保留基本信息显示
     if st.session_state.app_state == 'ANALYSIS_READY':
@@ -5075,7 +5098,6 @@ def call_alternative_api(user_message, system_prompt, api_key):
     return get_contextual_response(user_message)
 
 
-
 def get_smart_suggestions():
     """根据当前状态提供智能建议"""
     app_state = st.session_state.get('app_state', 'AWAITING_UPLOAD')
@@ -5219,7 +5241,6 @@ def process_chat_message(user_message):
 
 # 初始化聊天功能
 initialize_chat_session()
-
 
 # 初始化聊天功能
 initialize_chat_session()
@@ -6075,13 +6096,13 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
     # 添加键盘快捷键
     add_keyboard_shortcuts()
 
-
     # 在优化计算部分添加导出功能
     if 'optimization_result' in st.session_state:
         st.markdown("---")
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
