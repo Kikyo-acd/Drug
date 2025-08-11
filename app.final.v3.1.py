@@ -1,27 +1,4 @@
 import streamlit as st
-# 在文件开头添加
-import os
-from PIL import Image
-
-# 在主标题前添加（推荐位置）
-def show_team_branding():
-    """显示团队标志和品牌信息"""
-    logo_path = "logo.png"  # 或您的实际文件名
-    
-    if os.path.exists(logo_path):
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            logo = Image.open(logo_path)
-            st.image(logo, width=250)
-            st.markdown("""
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h4 style="color: #2E7D32; margin: 0.5rem 0;">黄安东团队</h4>
-                <p style="color: #666; font-size: 0.9rem;">中药智能分析专业团队</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-# 在主程序开始处调用
-show_team_branding()
 
 # 文件名: app.py
 # 版本: v5.1 - BugFix
@@ -6059,6 +6036,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
