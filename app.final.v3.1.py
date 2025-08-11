@@ -1,5 +1,59 @@
 import streamlit as st
 
+def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png"):
+    """创建带团队标志的并列标题"""
+    
+    # 检查logo文件是否存在
+    logo_exists = os.path.exists(logo_path)
+    
+    if logo_exists:
+        # 创建两列布局：左侧logo，右侧标题
+        col1, col2 = st.columns([1, 3])  # 比例1:3
+        
+        with col1:
+            # 左侧：团队标志
+            try:
+                logo = Image.open(logo_path)
+                st.image(logo, width=200)
+                st.markdown("""
+                <div style="text-align: center; margin-top: 1rem;">
+                    <p style="color: #2E7D32; font-weight: bold; margin: 0; font-size: 1.1rem;">黄安东团队</p>
+                    <p style="color: #666; font-size: 0.9rem; margin: 0;">专业技术支持</p>
+                </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"无法加载logo: {e}")
+        
+        with col2:
+            # 右侧：主标题
+            st.markdown(f"""
+            <div style="margin-left: 2rem; margin-top: 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem; animation: float 3s ease-in-out infinite;">{icon}</div>
+                <h1 style="
+                    background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50);
+                    background-size: 200% 200%;
+                    animation: gradientShift 3s ease infinite;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    margin: 1rem 0;
+                    line-height: 1.2;
+                ">{title}</h1>
+                {f'<p style="font-size: 1.1rem; color: #666; margin-left: 0.5rem;">{subtitle}</p>' if subtitle else ''}
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        # 如果没有logo，显示原来的标题
+        create_animated_header(title, subtitle, icon)
+
+# 替换您现有的标题调用
+create_header_with_logo(
+    "药络智控——中药多组分智能均化软件",
+    "专业的批次混合优化解决方案",
+    "🌿"
+)
+
 # 文件名: app.py
 # 版本: v5.1 - BugFix
 # 描述: 修复了NSGA-II在特定条件下selection函数索引越界的错误
@@ -6036,6 +6090,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
