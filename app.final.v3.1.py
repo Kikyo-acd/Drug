@@ -1,3 +1,5 @@
+import os
+from PIL import Image
 import streamlit as st
 
 def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png"):
@@ -6089,6 +6091,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
