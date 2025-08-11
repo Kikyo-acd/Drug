@@ -52,14 +52,14 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
         logo_exists = os.path.exists(logo_path)
 
         if logo_exists:
-            col1, col2 = st.columns([1, 3])
+            col1, col2 = st.columns([1, 5])
 
             with col1:
                 try:
                     logo = Image.open(logo_path)
                     st.image(logo, width=200)
                     st.markdown("""
-                    <div style="text-align: center; margin-top: 1rem;">
+                    <div style="text-align: center; margin-top: 0rem;">
                     </div>
                     """, unsafe_allow_html=True)
                 except Exception as e:
@@ -68,7 +68,7 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
             with col2:
                 # 标题与叶子在同一行，叶子在最后
                 st.markdown(f"""
-                <div style="margin-left: 2rem; margin-top: 2rem;">
+                <div style="margin-left: 0rem; margin-top: 2rem;">
                     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
                         <h1 style="
                             background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50);
@@ -126,7 +126,7 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
 
 
 create_header_with_logo(
-    "药络智控——中药多组分智能均化软件",
+    "药络智控——中药多组分智能均化",
     "专业的批次混合优化解决方案",
     "🌿"
 )
