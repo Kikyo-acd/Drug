@@ -197,7 +197,6 @@ def download_and_setup_font():
                 plt.rcParams['font.family'] = font_name
                 plt.rcParams['font.sans-serif'] = [font_name]
 
-                st.success(f"✅ 成功下载并配置字体: {font_name}")
                 return True, font_name
 
     except Exception as e:
@@ -6091,6 +6090,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
