@@ -1340,7 +1340,7 @@ if 'drug_type' not in st.session_state:
 
 # 在现有的 apply_custom_css() 函数中添加更多动画
 def apply_custom_css():
-    """应用自定义CSS样式 - 超级动画增强版"""
+    """应用自定义CSS样式 - 移除旋转动画版本"""
     st.markdown("""
     <style>
     /* 导入Google字体 */
@@ -1363,7 +1363,7 @@ def apply_custom_css():
         scroll-behavior: smooth;
     }
 
-    /* 页面容器动画 */
+    /* 页面容器动画 - 移除旋转 */
     .stApp {
         animation: pageLoad 1s ease-out;
         font-family: 'Inter', sans-serif;
@@ -1374,7 +1374,7 @@ def apply_custom_css():
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* 增强的渐变动画 */
+    /* 增强的渐变动画 - 移除旋转 */
     @keyframes gradientShift {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -1392,24 +1392,25 @@ def apply_custom_css():
         100% { transform: scale(1); box-shadow: var(--shadow-soft); }
     }
 
+    /* 滑入动画 - 移除旋转效果 */
     @keyframes slideInLeft {
         from { 
-            transform: translateX(-100%) rotate(-5deg); 
+            transform: translateX(-100%); 
             opacity: 0; 
         }
         to { 
-            transform: translateX(0) rotate(0deg); 
+            transform: translateX(0); 
             opacity: 1; 
         }
     }
 
     @keyframes slideInRight {
         from { 
-            transform: translateX(100%) rotate(5deg); 
+            transform: translateX(100%); 
             opacity: 0; 
         }
         to { 
-            transform: translateX(0) rotate(0deg); 
+            transform: translateX(0); 
             opacity: 1; 
         }
     }
@@ -1432,6 +1433,7 @@ def apply_custom_css():
         100% { transform: scale(1); opacity: 1; }
     }
 
+    /* 移除旋转的抖动动画 */
     @keyframes shake {
         0%, 100% { transform: translateX(0); }
         25% { transform: translateX(-5px); }
@@ -1443,7 +1445,7 @@ def apply_custom_css():
         50% { box-shadow: 0 0 30px rgba(76, 175, 80, 0.6); }
     }
 
-    /* 主标题动画增强 */
+    /* 主标题动画增强 - 移除旋转 */
     .main-title {
         background: linear-gradient(45deg, #667eea, #764ba2, #4CAF50, #66BB6A);
         background-size: 400% 400%;
@@ -1455,7 +1457,7 @@ def apply_custom_css():
         text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    /* 卡片动画超级增强 */
+    /* 卡片动画超级增强 - 移除旋转 */
     .metric-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
         border: 1px solid #e3e6ea;
@@ -1496,7 +1498,7 @@ def apply_custom_css():
         transition: transform 0.1s ease;
     }
 
-    /* 按钮超级动画 */
+    /* 按钮超级动画 - 移除旋转 */
     .stButton > button {
         background: var(--gradient-2);
         color: white;
@@ -1550,24 +1552,24 @@ def apply_custom_css():
         50% { opacity: 0.7; }
     }
 
-    /* 侧边栏动画 */
+    /* 侧边栏动画 - 移除旋转 */
     .css-1d391kg {
         animation: slideInLeft 0.8s ease-out;
         background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
     }
 
-    /* 主内容区动画 */
+    /* 主内容区动画 - 移除旋转 */
     .main .block-container {
         animation: slideInUp 0.8s ease-out;
     }
 
-    /* 成功消息动画 */
+    /* 成功消息动画 - 移除旋转 */
     .stAlert {
         animation: bounceIn 0.6s ease-out;
         border-left: 4px solid var(--primary-color);
     }
 
-    /* 数据表格动画 */
+    /* 数据表格动画 - 移除旋转 */
     .stDataFrame {
         animation: slideInUp 0.6s ease-out;
         border-radius: 12px;
@@ -1585,7 +1587,7 @@ def apply_custom_css():
         box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
     }
 
-    /* 选择框动画 */
+    /* 选择框动画 - 移除旋转 */
     .stSelectbox > div > div {
         border-radius: 8px;
         transition: all 0.3s ease;
@@ -1598,7 +1600,7 @@ def apply_custom_css():
         transform: scale(1.02);
     }
 
-    /* 文本输入框动画 */
+    /* 文本输入框动画 - 移除旋转 */
     .stTextInput > div > div > input,
     .stNumberInput > div > div > input {
         border-radius: 8px;
@@ -1613,17 +1615,17 @@ def apply_custom_css():
         transform: scale(1.02);
     }
 
-    /* 加载动画 */
+    /* 修改加载动画 - 移除旋转效果 */
     .stSpinner {
-        animation: spin 1s linear infinite;
+        animation: pulse 1.5s ease-in-out infinite;
     }
 
+    /* 完全移除旋转的spin动画 */
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        /* 移除此动画，防止旋转 */
     }
 
-    /* 图表容器动画 */
+    /* 图表容器动画 - 移除旋转 */
     .stPlotlyChart {
         animation: slideInUp 0.8s ease-out;
         border-radius: 12px;
@@ -1631,7 +1633,7 @@ def apply_custom_css():
         box-shadow: var(--shadow-soft);
     }
 
-    /* Expander动画 */
+    /* Expander动画 - 移除旋转 */
     .streamlit-expanderHeader {
         transition: all 0.3s ease;
         border-radius: 8px;
@@ -1642,7 +1644,7 @@ def apply_custom_css():
         transform: scale(1.01);
     }
 
-    /* 标签页动画 */
+    /* 标签页动画 - 移除旋转 */
     .stTabs [data-baseweb="tab-list"] {
         background: linear-gradient(90deg, #f8f9fa, #ffffff);
         border-radius: 12px;
@@ -1660,7 +1662,7 @@ def apply_custom_css():
         transform: scale(1.05);
     }
 
-    /* 滑块动画 */
+    /* 滑块动画 - 移除旋转 */
     .stSlider {
         padding: 1rem 0;
     }
@@ -1673,7 +1675,7 @@ def apply_custom_css():
         transform: scale(1.1);
     }
 
-    /* 多选框动画 */
+    /* 多选框动画 - 移除旋转 */
     .stMultiSelect > div > div {
         border-radius: 8px;
         transition: all 0.3s ease;
@@ -1684,7 +1686,7 @@ def apply_custom_css():
         box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
     }
 
-    /* 自定义成功/警告/错误消息动画 */
+    /* 自定义成功/警告/错误消息动画 - 移除旋转 */
     .success-message {
         background: linear-gradient(135deg, #d4edda, #c3e6cb);
         border: 1px solid #c3e6cb;
@@ -1715,7 +1717,7 @@ def apply_custom_css():
         animation: shake 0.8s ease-out;
     }
 
-    /* 步骤指示器动画 */
+    /* 步骤指示器动画 - 移除旋转 */
     .step-indicator {
         display: flex;
         align-items: center;
@@ -1743,7 +1745,7 @@ def apply_custom_css():
         color: #2c3e50;
     }
 
-    /* 响应式动画 */
+    /* 响应式动画 - 移除旋转 */
     @media (max-width: 768px) {
         .metric-card {
             animation: slideInUp 0.4s ease-out;
@@ -1754,7 +1756,7 @@ def apply_custom_css():
         }
     }
 
-    /* 暗色模式适配 */
+    /* 暗色模式适配 - 移除旋转 */
     @media (prefers-color-scheme: dark) {
         .metric-card {
             background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
@@ -1764,7 +1766,6 @@ def apply_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
-
 
 def create_animated_header(title, subtitle="", icon="🌿"):
     """创建带动画的标题组件"""
@@ -2144,45 +2145,44 @@ def export_excel_report():
 
     # Check if results exist to avoid errors
     if 'optimization_result' not in st.session_state:
-        st.error("❌ Please run an optimization successfully before exporting.")
+        st.error("❌ 请先成功运行一次优化，然后才能导出报告。")
         return
 
     buffer = io.BytesIO()
 
-    with st.spinner('Generating Excel report...'):
+    with st.spinner('正在生成Excel报告...'):
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             # Sheet 1: Original Processed Data
             if 'df_processed' in st.session_state:
                 st.session_state.df_processed.to_excel(writer, sheet_name='Processed_Data', index=True)
 
             # Sheet 2: Optimization Result (The Recipe)
-            # --- THIS IS THE CORRECTED LOGIC ---
             if 'optimization_result' in st.session_state:
-                # Extract the necessary data from the session state
                 result_obj = st.session_state.optimization_result.get('result')
                 selected_data = st.session_state.optimization_result.get('selected_data')
-                total_mix_amount = st.session_state.get('total_mix_amount', 1) # Default to 1 to prevent division by zero
+                total_mix_amount = st.session_state.get('total_mix_amount', 1000) # 默认1000克
 
                 if result_obj and selected_data is not None:
-                    # Create a clean DataFrame for the recipe
-                    proportions = result_obj.get('x', [])
-                    weights = proportions * total_mix_amount
+                    # 检查是否是NSGA-II结果
+                    if isinstance(result_obj.get('x'), np.ndarray):
+                        proportions = result_obj.get('x', [])
+                        weights = proportions * total_mix_amount
 
-                    # Build the result DataFrame
-                    recipe_df = pd.DataFrame({
-                        'Batch_ID': selected_data.index,
-                        'Recommended_Weight_g': weights,
-                        'Proportion_Percent': proportions * 100,
-                        'Rubric_Score': selected_data['Rubric_Score'],
-                        'ML_Score': selected_data.get('ML_Score', None) # Safely get ML_Score
-                    })
+                        # 构建结果DataFrame
+                        recipe_df = pd.DataFrame({
+                            'Batch_ID': selected_data.index,
+                            'Recommended_Weight_g': weights,
+                            'Proportion_Percent': proportions * 100,
+                            'Rubric_Score': selected_data['Rubric_Score'],
+                            'ML_Score': selected_data.get('ML_Score', 5.0) # 安全获取ML_Score
+                        })
 
-                    # Filter for only the batches that are actually used in the recipe
-                    final_recipe_df = recipe_df[recipe_df['Recommended_Weight_g'] > 0.001].copy()
-                    final_recipe_df.reset_index(drop=True, inplace=True)
+                        # 只显示实际使用的批次
+                        final_recipe_df = recipe_df[recipe_df['Recommended_Weight_g'] > 0.001].copy()
+                        final_recipe_df.reset_index(drop=True, inplace=True)
 
-                    # Write the clean recipe DataFrame to the Excel sheet
-                    final_recipe_df.to_excel(writer, sheet_name='Optimization_Result_Recipe', index=False)
+                        # 写入Excel
+                        final_recipe_df.to_excel(writer, sheet_name='Optimization_Result_Recipe', index=False)
 
             # Sheet 3: Statistical Analysis
             if 'df_processed' in st.session_state:
@@ -2192,13 +2192,75 @@ def export_excel_report():
     buffer.seek(0)
 
     st.download_button(
-        label="📥 Download Excel Report",
+        label="📥 下载Excel报告",
         data=buffer.getvalue(),
         file_name=f"Homogenization_Analysis_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    st.success("✅ Excel report has been generated successfully!")
+    st.success("✅ Excel报告已成功生成！")
 
+
+def update_nsga2_progress_with_visualization(generation, population, values, progress_placeholder, metrics_placeholder,
+                                             chart_placeholder):
+    """更新NSGA-II优化进度可视化 - 增强版"""
+    with progress_placeholder.container():
+        # 进度条
+        progress_percent = (generation / st.session_state.nsga_params['num_generations']) * 100
+        st.progress(progress_percent / 100)
+
+        # 详细指标
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("当前代数", f"{generation}/{st.session_state.nsga_params['num_generations']}")
+
+        with col2:
+            if len(values) > 0:
+                best_deviation = min(values[:, 0])
+                st.metric("最佳偏差", f"{best_deviation:.4f}")
+
+        with col3:
+            if len(values) > 0:
+                best_similarity = max(-values[:, 1])  # 注意相似度是负值存储的
+                st.metric("最佳相似度", f"{best_similarity:.4f}")
+
+        with col4:
+            st.metric("收敛进度", f"{progress_percent:.1f}%")
+
+    # 实时更新帕累托前沿图
+    if len(values) > 10 and generation % 50 == 0:  # 每50代更新一次图表
+        with chart_placeholder.container():
+            fig, ax = plt.subplots(figsize=(10, 6))
+
+            # 计算当前前沿
+            fronts = fast_non_dominated_sort(values)
+
+            if fronts and len(fronts[0]) > 0:
+                # 绘制第一前沿
+                first_front_values = values[fronts[0]]
+                ax.scatter(first_front_values[:, 0], -first_front_values[:, 1],
+                           c='red', alpha=0.8, s=60, label='Current Pareto Front',
+                           edgecolors='darkred')
+
+                # 绘制其他解
+                other_indices = []
+                for i in range(1, len(fronts)):
+                    other_indices.extend(fronts[i])
+
+                if other_indices:
+                    other_values = values[other_indices]
+                    ax.scatter(other_values[:, 0], -other_values[:, 1],
+                               c='lightblue', alpha=0.4, s=30, label='Other Solutions')
+
+            ax.set_xlabel('Content Deviation (Lower is Better)', fontsize=12)
+            ax.set_ylabel('Similarity Score (Higher is Better)', fontsize=12)
+            ax.set_title(f'Real-time Pareto Front Evolution - Generation {generation}', fontsize=14)
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.close()
 
 def add_keyboard_shortcuts():
     """添加键盘快捷键支持"""
@@ -2989,7 +3051,7 @@ def generate_pdf_report():
                 2. Key positive findings.
                 3. Potential considerations or risks.
                 4. A concluding recommendation.
-                Here is the data:
+                Here is the data, reply in Chinese:
                 {report_context}
                 """
                 ai_response_raw = call_github_models_api("Summarize these results for a formal report.", system_prompt,
@@ -3421,7 +3483,7 @@ def show_data_analysis_dashboard():
 # --- NSGA-II 主执行函数 ---
 def run_nsga2_optimization(selected_data, col_map, nsga_params):
     """
-    执行 NSGA-II 优化
+    执行 NSGA-II 优化 - 增加实时进度显示
     """
     num_individuals = len(selected_data)
     inventory = selected_data['库存量 (克)'].fillna(nsga_params['total_mix_amount'] * num_individuals * 10).values
@@ -3430,8 +3492,12 @@ def run_nsga2_optimization(selected_data, col_map, nsga_params):
     population = [np.random.dirichlet(np.ones(num_individuals), size=1).flatten() for _ in
                   range(nsga_params['population_size'])]
 
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+    # 创建进度显示容器
+    progress_placeholder = st.empty()
+    metrics_placeholder = st.empty()
+    chart_placeholder = st.empty()
+
+    st.markdown("### 🔄 优化过程实时监控")
 
     # 迭代
     for gen in range(nsga_params['num_generations']):
@@ -3442,6 +3508,11 @@ def run_nsga2_optimization(selected_data, col_map, nsga_params):
 
         # 精英选择
         population = selection(population, obj_values, nsga_params['population_size'])
+
+        # 更新实时显示
+        if gen % 10 == 0:  # 每10代更新一次显示
+            update_nsga2_progress_with_visualization(gen + 1, population, obj_values,
+                                                     progress_placeholder, metrics_placeholder, chart_placeholder)
 
         # 生成后代
         offspring = []
@@ -3454,20 +3525,16 @@ def run_nsga2_optimization(selected_data, col_map, nsga_params):
 
         population = offspring
 
-        # 更新进度条
-        progress = (gen + 1) / nsga_params['num_generations']
-        progress_bar.progress(progress)
-        status_text.text(f"优化中... 第 {gen + 1}/{nsga_params['num_generations']} 代")
-
-    status_text.success("优化完成！正在处理结果...")
-
-    # --- 获取最终的帕累托前沿 ---
+    # 最终更新
     final_objective_values = np.array([nsga2_evaluate(ind, selected_data, col_map, nsga_params['target_values'],
                                                       inventory, nsga_params['total_mix_amount'],
                                                       nsga_params['num_batches_to_select']) for ind in population])
+
+    progress_placeholder.success("✅ 优化完成！正在处理结果...")
+
+    # 获取最终的帕累托前沿
     final_fronts = fast_non_dominated_sort(final_objective_values)
 
-    # 增加一个判断，如果一个前沿都没有，直接返回空
     if not final_fronts:
         return [], []
 
@@ -3475,7 +3542,7 @@ def run_nsga2_optimization(selected_data, col_map, nsga_params):
     pareto_solutions = [population[i] for i in pareto_front_indices]
     pareto_values = final_objective_values[pareto_front_indices]
 
-    # --- 移除极端解 ---
+    # 移除极端解
     if nsga_params['remove_extremes'] and len(pareto_front_indices) > 5:
         idx_min_dev = np.argmin(pareto_values[:, 0])
         idx_max_sim = np.argmin(pareto_values[:, 1])
@@ -3542,6 +3609,16 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
     plt.tight_layout()
     st.pyplot(fig)
 
+    # 添加中文说明
+    st.markdown("""
+    **图表说明：**
+    - **第一前沿（红色圆点）**: 最优解集合，无法被任何其他解同时在两个目标上超越
+    - **第二前沿（橙色方块）**: 次优解集合，仅被第一前沿解支配
+    - **其他前沿（蓝色三角）**: 较低层级的解
+    - **横轴**: 加权含量偏差（越小越好）
+    - **纵轴**: 相似度得分（越大越好）
+    """)
+
     # 显示前沿统计信息
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -3558,7 +3635,7 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
 
     for i, (sol, val) in enumerate(sorted(zip(solutions, values), key=lambda x: x[1][0])):
         final_proportions = np.zeros_like(sol)
-        top_k_indices = np.where(sol > 0)[0]  # 找到实际使用的批次
+        top_k_indices = np.where(sol > 0)[0]
         final_proportions[top_k_indices] = sol[top_k_indices]
         final_proportions /= np.sum(final_proportions)
 
@@ -3611,7 +3688,7 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
     used_indices = np.where(selected_prop > 0.001)[0]
 
     # 使用 .iloc 进行整数索引访问
-    used_batch_ids = selected_data.index[used_indices]  # 获取批次ID
+    used_batch_ids = selected_data.index[used_indices]
     used_proportions = selected_prop[used_indices]
     used_weights = used_proportions * total_mix_amount
 
@@ -3620,7 +3697,7 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
         '批次编号': used_batch_ids,
         '混合比例': used_proportions,
         '推荐用量 (克)': used_weights,
-        '质量评分': selected_data.iloc[used_indices]['Rubric_Score']  # 使用 .iloc
+        '质量评分': selected_data.iloc[used_indices]['Rubric_Score']
     })
 
     st.dataframe(details_df.style.format({
@@ -3673,6 +3750,13 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
     plt.tight_layout()
     st.pyplot(fig)
 
+    # 添加配比图表说明
+    st.markdown("""
+    **配比图表说明：**
+    - **左图（饼图）**: 各批次在混合配方中的重量占比
+    - **右图（柱状图）**: 各批次的具体用量分布（克）
+    """)
+
     # --- 6. 方案比较分析 ---
     if len(results_df) > 1:
         st.write("**多方案对比分析**")
@@ -3710,6 +3794,47 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
 
             plt.tight_layout()
             st.pyplot(fig)
+
+            # 添加雷达图说明
+            st.markdown("""
+            **雷达图说明：**
+            - **Low Deviation**: 低含量偏差（距离中心越远越好）
+            - **High Similarity**: 高相似度（距离中心越远越好）  
+            - **Few Batches**: 少批次数（距离中心越远越好）
+            - **面积越大**: 该方案的综合表现越好
+            """)
+
+    # --- 7. 添加成分达标情况分析 ---
+    st.write("**成分含量达标分析**")
+
+    # 计算选中方案的成分含量
+    selected_prop = results_df.iloc[selected_solution_index]['proportions']
+
+    # 获取甘草苷和甘草酸的实际含量
+    gg_content = np.dot(selected_prop, selected_data[col_map['gg_g']].values)
+    ga_content = np.dot(selected_prop, selected_data[col_map['ga_g']].values)
+
+    # 显示达标情况
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("甘草苷含量", f"{gg_content:.4f} mg/g",
+                  delta=f"标准: ≥4.5", delta_color="normal")
+        gg_status = "✅ 达标" if gg_content >= 4.5 else "❌ 未达标"
+        st.write(gg_status)
+
+    with col2:
+        st.metric("甘草酸含量", f"{ga_content:.4f} mg/g",
+                  delta=f"标准: ≥18.0", delta_color="normal")
+        ga_status = "✅ 达标" if ga_content >= 18.0 else "❌ 未达标"
+        st.write(ga_status)
+
+    # 如果有相似度数据
+    if 'sim' in col_map and col_map['sim'] in selected_data.columns:
+        sim_content = np.dot(selected_prop, selected_data[col_map['sim']].values)
+        st.metric("相似度", f"{sim_content:.4f}",
+                  delta=f"标准: ≥0.9", delta_color="normal")
+        sim_status = "✅ 达标" if sim_content >= 0.9 else "❌ 未达标"
+        st.write(sim_status)
 
 
 # ##############################################################################
@@ -5824,37 +5949,84 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
                             fingerprint_options, st.session_state.drug_type
                         )
 
+
                 elif st.session_state.optimization_mode == '多目标均衡 (NSGA-II)':
+
                     with st.spinner('🧬 正在执行NSGA-II多目标进化计算，请稍候...'):
-                        progress_container = st.container()
+
                         solutions, values = run_nsga2_optimization(full_selected_data, col_map,
+
                                                                    st.session_state.nsga_params)
 
-
                     if solutions:
+
                         display_nsga2_results(solutions, values, full_selected_data, col_map,
+
                                               st.session_state.total_mix_amount)
+
+                        # 保存NSGA-II结果以便导出 - 使用第一个解作为代表
+
                         representative_result_x = solutions[0]
-                        representative_result = {'x': representative_result_x, 'fun': values[0][0]} # 伪造一个result对象
-                        st.session_state.optimization_result = {
-                            'result': representative_result,
-                            'selected_data': full_selected_data,
-                            'constraints': {'Note': 'NSGA-II multi-objective'},
-                            'fp_options': {}
+
+                        representative_result = {
+
+                            'x': representative_result_x,
+
+                            'fun': values[0][0],
+
+                            'success': True  # 添加成功标志
+
                         }
+
+                        # 保存完整的NSGA-II结果
+
+                        st.session_state.optimization_result = {
+
+                            'result': representative_result,
+
+                            'selected_data': full_selected_data,
+
+                            'constraints': MINIMUM_STANDARDS,
+
+                            'fp_options': {},
+
+                            'nsga_results': {  # 添加NSGA-II专有结果
+
+                                'all_solutions': solutions,
+
+                                'all_values': values,
+
+                                'fronts': fast_non_dominated_sort(values)
+
+                            }
+
+                        }
+
                     else:
+
                         st.error("🚫 NSGA-II 优化失败")
+
                         st.markdown("""
+
                         **可能的原因：**
+
                         - 选择的批次组合无法满足所有硬性约束
+
                         - 库存量设置过低
+
                         - 目标值设置不合理
 
+
                         **建议解决方案：**
+
                         1. 增加批次选择，特别是质量均衡的批次
+
                         2. 检查并调整库存量设置
+
                         3. 适当放宽目标含量要求
+
                         4. 尝试使用SLSQP引擎进行初步测试
+
                         """)
     else:
         st.info("🎯 请先选择优化引擎，然后进行批次选择和参数设置")
