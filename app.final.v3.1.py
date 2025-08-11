@@ -19,7 +19,7 @@ def create_header_with_logo(title, subtitle="", icon="🌿", logo_path="logo.png
                 st.image(logo, width=200)
                 st.markdown("""
                 <div style="text-align: center; margin-top: 1rem;">
-                    <p style="color: #2E7D32; font-weight: bold; margin: 0; font-size: 1.1rem;">黄安东团队</p>
+                    <p style="color: #2E7D32; font-weight: bold; margin: 0; font-size: 1.1rem;">药络智控Team</p>
                     <p style="color: #666; font-size: 0.9rem; margin: 0;">专业技术支持</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2437,14 +2437,6 @@ def create_status_indicator(status, message, icon=""):
         </div>
         """, unsafe_allow_html=True)
 
-
-# 主标题
-# 替换原有的主标题
-create_animated_header(
-    "药络智控——中药多组分智能均化软件",
-    "专业的批次混合优化解决方案",
-    "🌿"
-)
 # 添加功能卡片
 create_interactive_info_cards()
 st.markdown("<br>", unsafe_allow_html=True)
@@ -6090,6 +6082,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
