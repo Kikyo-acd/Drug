@@ -6,7 +6,7 @@ from PIL import Image
 # 在主标题前添加（推荐位置）
 def show_team_branding():
     """显示团队标志和品牌信息"""
-    logo_path = "team_logo.png"  # 或您的实际文件名
+    logo_path = "logo.png"  # 或您的实际文件名
     
     if os.path.exists(logo_path):
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -6059,6 +6059,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
