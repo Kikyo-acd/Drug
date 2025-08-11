@@ -1,33 +1,33 @@
 import streamlit as st
-from PIL import Image
+# 在文件开头添加
 import os
+from PIL import Image
 
-# 在主标题前添加团队标志
-if os.path.exists("logo.png"):
-    logo = Image.open("logo.png")
+# 在主标题前添加（推荐位置）
+def show_team_branding():
+    """显示团队标志和品牌信息"""
+    logo_path = "team_logo.png"  # 或您的实际文件名
+    
+    if os.path.exists(logo_path):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            logo = Image.open(logo_path)
+            st.image(logo, width=250)
+            st.markdown("""
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h4 style="color: #2E7D32; margin: 0.5rem 0;">黄安东团队</h4>
+                <p style="color: #666; font-size: 0.9rem;">中药智能分析专业团队</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # 方式1：居中显示大标志
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(logo, width=300, caption="黄安东团队")
+# 在主程序开始处调用
+show_team_branding()
 
-    # 或方式2：在侧边栏显示
-    with st.sidebar:
-        st.image(logo, width=200)
-        st.markdown("---")
-
-
-# 页面配置 - 必须在最开头
-st.set_page_config(
-    page_title="中药多组分智能均化软件",
-    page_icon="🌿",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://github.com/your-repo',
-        'Report a bug': "mailto:support@example.com",
-        'About': "# 中药多组分智能均化软件 v5.1\n\n专业的中药批次混合优化工具"
-    }
+# 然后是您现有的主标题
+create_animated_header(
+    "药络智控——中药多组分智能均化软件",
+    "专业的批次混合优化解决方案",
+    "🌿"
 )
 
 # 文件名: app.py
@@ -6066,5 +6066,6 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
