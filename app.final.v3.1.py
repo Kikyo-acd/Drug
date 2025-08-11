@@ -4,7 +4,7 @@ import os
 
 # 在主标题前添加团队标志
 if os.path.exists("logo.png"):
-    logo = Image.open("ogo.png")
+    logo = Image.open("logo.png")
 
     # 方式1：居中显示大标志
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -6066,4 +6066,5 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
