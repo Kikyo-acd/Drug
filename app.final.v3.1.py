@@ -1,7 +1,11 @@
 import os
 from PIL import Image
 import streamlit as st
-
+# 在现有的导入语句中添加
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.shared import OxmlElement, qn
 import streamlit as st
 from PIL import Image
 import os
@@ -2214,6 +2218,266 @@ def update_nsga2_progress(generation, best_solutions, progress_placeholder, metr
             st.pyplot(fig)
             plt.close()
 
+def generate_docx_report():
+    """生成包含AI分析的完整DOCX报告"""
+    if 'optimization_result' not in st.session_state or not isinstance(st.session_state.optimization_result, dict):
+        st.error("❌ 请先成功运行一次优化计算，再生成报告。")
+        return
+
+    result = st.session_state.optimization_result['result']
+    selected_data = st.session_state.optimization_result['selected_data']
+
+    with st.spinner('📄 正在生成Word报告... (AI分析可能需要一些时间)'):
+        try:
+            # --- AI 分析模块 ---
+            ai_summary = "AI分析暂时无法执行。"
+            if st.session_state.get('github_api_key'):
+                st.info("正在调用AI进行智能分析...")
+                report_context = f"""
+                优化模式: {st.session_state.get('optimization_mode', 'N/A')}
+                目标产量: {st.session_state.get('total_mix_amount', 'N/A')}g
+                最终评分/成本: {result.get('fun') if result else 'N/A'}
+                使用批次数: {len(selected_data[result.get('x', []) > 0.001]) if result else 'N/A'}
+                配方批次: {selected_data[result.get('x', []) > 0.001].index.tolist() if result else 'N/A'}
+                """
+                system_prompt = f"""你是中药制造专业的数据分析专家。请基于以下优化结果数据，用中文提供简洁、专业的总结和建议。
+                你的总结应包括：
+                1. 优化结果的简要概述
+                2. 关键积极发现
+                3. 潜在考虑因素或风险
+                4. 结论性建议
+                数据如下：
+                {report_context}
+                """
+                ai_response_raw = call_github_models_api("请为正式报告总结这些结果。", system_prompt,
+                                                         st.session_state.github_api_key)
+                if "❌" not in ai_response_raw:
+                    ai_summary = ai_response_raw.replace("🤖 **小药LLM回复：**\n\n", "").replace("🤖 **AI助手回复：**\n\n", "")
+            else:
+                ai_summary = "由于未提供API密钥，跳过AI分析。请在侧边栏输入API密钥以启用此功能。"
+
+            # --- DOCX 文档生成 ---
+            doc = Document()
+            
+            # 设置文档样式
+            sections = doc.sections
+            for section in sections:
+                section.top_margin = Inches(1)
+                section.bottom_margin = Inches(1)
+                section.left_margin = Inches(1)
+                section.right_margin = Inches(1)
+
+            # 1. 标题
+            title = doc.add_heading('中药多组分智能均化优化报告', 0)
+            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # 2. 基本信息
+            doc.add_heading('一、基本信息', level=1)
+            info_para = doc.add_paragraph()
+            info_para.add_run(f"生成时间：{datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}\n")
+            info_para.add_run(f"优化引擎：{st.session_state.get('optimization_mode', '未知')}\n")
+            info_para.add_run(f"药物类型：{st.session_state.get('drug_type', '未知')}\n")
+            info_para.add_run(f"目标产量：{st.session_state.get('total_mix_amount', '未知')} 克\n")
+            
+            # 3. AI智能分析
+            doc.add_heading('二、AI智能分析摘要', level=1)
+            ai_para = doc.add_paragraph(ai_summary)
+            
+            # 4. 推荐配方表格
+            doc.add_heading('三、推荐混合配方', level=1)
+            
+            if result and 'x' in result and hasattr(result, 'x'):
+                # 创建配方数据
+                used_batches = result['x'] > 0.001
+                if np.any(used_batches):
+                    recipe_data = selected_data[used_batches].copy()
+                    proportions = result['x'][used_batches]
+                    weights = proportions * st.session_state.total_mix_amount
+                    
+                    # 创建表格
+                    table = doc.add_table(rows=1, cols=4)
+                    table.style = 'Table Grid'
+                    
+                    # 表头
+                    hdr_cells = table.rows[0].cells
+                    hdr_cells[0].text = '批次编号'
+                    hdr_cells[1].text = '推荐用量(克)'
+                    hdr_cells[2].text = '混合比例(%)'
+                    hdr_cells[3].text = '质量评分'
+                    
+                    # 设置表头样式
+                    for cell in hdr_cells:
+                        cell.paragraphs[0].runs[0].bold = True
+                        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # 添加数据行
+                    for i, (batch_id, weight, prop, score) in enumerate(zip(
+                        recipe_data.index, weights, proportions, recipe_data['Rubric_Score']
+                    )):
+                        row_cells = table.add_row().cells
+                        row_cells[0].text = str(batch_id)
+                        row_cells[1].text = f"{weight:.2f}"
+                        row_cells[2].text = f"{prop*100:.2f}%"
+                        row_cells[3].text = f"{score:.3f}"
+                        
+                        # 居中对齐
+                        for cell in row_cells:
+                            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                else:
+                    doc.add_paragraph("未找到有效的配方数据。")
+            else:
+                doc.add_paragraph("优化结果无效，无法生成配方表。")
+            
+            # 5. 优化结果汇总
+            doc.add_heading('四、优化结果汇总', level=1)
+            
+            summary_para = doc.add_paragraph()
+            if st.session_state.current_mode == "成本最优":
+                summary_para.add_run(f"预期总成本：{(result.fun * st.session_state.total_mix_amount):.2f} 元\n")
+            else:
+                if st.session_state.drug_type == '甘草':
+                    ml_score = -result.fun
+                    summary_para.add_run(f"预期ML评分：{ml_score:.2f} 分 (1-10分制)\n")
+                else:
+                    quality_score = -result.fun
+                    summary_para.add_run(f"预期质量评分：{quality_score:.4f}\n")
+            
+            used_batches_count = len(np.where(result.x > 0.001)[0]) if result and 'x' in result else 0
+            summary_para.add_run(f"实际使用批次数：{used_batches_count}\n")
+            total_inventory_used = np.sum(result.x * st.session_state.total_mix_amount) if result and 'x' in result else 0
+            summary_para.add_run(f"总原料用量：{total_inventory_used:.2f} 克\n")
+            
+            # 6. 约束达标情况
+            doc.add_heading('五、约束指标达标情况', level=1)
+            
+            # 获取约束信息
+            if st.session_state.drug_type == '甘草':
+                constraints = {"gg_g": 4.5, "ga_g": 18, "sim": 0.9}
+                constraint_names = {"gg_g": "甘草苷", "ga_g": "甘草酸", "sim": "相似度"}
+            else:
+                constraints = st.session_state.get('custom_constraints', {})
+                constraint_names = {f"metric_{i}": name for i, name in enumerate(st.session_state.get('custom_metrics_info', []))}
+            
+            col_map = st.session_state.col_map
+            
+            # 创建约束达标表格
+            if constraints and result and 'x' in result:
+                constraint_table = doc.add_table(rows=1, cols=4)
+                constraint_table.style = 'Table Grid'
+                
+                # 表头
+                constraint_hdr = constraint_table.rows[0].cells
+                constraint_hdr[0].text = '指标名称'
+                constraint_hdr[1].text = '实际值'
+                constraint_hdr[2].text = '标准要求'
+                constraint_hdr[3].text = '达标状态'
+                
+                for cell in constraint_hdr:
+                    cell.paragraphs[0].runs[0].bold = True
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # 添加约束检查数据
+                for key, min_val in constraints.items():
+                    col_name = col_map.get(key)
+                    if col_name and col_name in selected_data.columns:
+                        final_val = np.dot(result.x, selected_data[col_name].values)
+                        status = "✓ 达标" if final_val >= min_val else "✗ 未达标"
+                        display_name = constraint_names.get(key, col_name)
+                        
+                        row_cells = constraint_table.add_row().cells
+                        row_cells[0].text = display_name
+                        row_cells[1].text = f"{final_val:.4f}"
+                        row_cells[2].text = f"≥ {min_val}"
+                        row_cells[3].text = status
+                        
+                        # 根据达标状态设置颜色
+                        if "✓" in status:
+                            row_cells[3].paragraphs[0].runs[0].font.color.rgb = None  # 默认颜色
+                        
+                        for cell in row_cells:
+                            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # 7. 使用说明和建议
+            doc.add_heading('六、使用说明和建议', level=1)
+            recommendations = doc.add_paragraph()
+            recommendations.add_run("1. 生产操作建议：\n").bold = True
+            recommendations.add_run("   • 按表格中的推荐用量精确称取各批次原料\n")
+            recommendations.add_run("   • 建议按质量评分从高到低的顺序进行混合\n")
+            recommendations.add_run("   • 混合过程中注意均匀性，确保充分混合\n\n")
+            
+            recommendations.add_run("2. 质量控制要点：\n").bold = True
+            recommendations.add_run("   • 混合完成后进行关键指标检测验证\n")
+            recommendations.add_run("   • 如发现偏差，可适当微调配比\n")
+            recommendations.add_run("   • 建立批次追溯记录，便于后续管理\n\n")
+            
+            recommendations.add_run("3. 库存管理建议：\n").bold = True
+            recommendations.add_run("   • 及时更新各批次库存信息\n")
+            recommendations.add_run("   • 对于使用量大的批次，预留充足库存\n")
+            recommendations.add_run("   • 定期检查原料质量，确保符合标准\n")
+            
+            # 8. 页脚信息
+            doc.add_page_break()
+            footer_para = doc.add_paragraph()
+            footer_para.add_run("报告生成系统：中药多组分智能均化软件\n")
+            footer_para.add_run("技术支持：药络智控团队\n")
+            footer_para.add_run(f"报告生成时间：{datetime.datetime.now().strftime('%Y年%m月%d日 %H时%M分')}")
+            footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # 保存为字节流
+            doc_buffer = io.BytesIO()
+            doc.save(doc_buffer)
+            doc_buffer.seek(0)
+
+            # 提供下载
+            st.download_button(
+                label="📥 下载Word报告",
+                data=doc_buffer.getvalue(),
+                file_name=f"智能均化优化报告_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
+            st.success("✅ Word报告已成功生成！")
+
+        except Exception as e:
+            st.error(f"❌ Word报告生成失败: {e}")
+            import traceback
+            st.code(traceback.format_exc())
+            
+            # 提供替代方案
+            st.markdown("---")
+            st.subheader("📋 替代方案：文本格式报告")
+            
+            try:
+                # 生成文本格式的报告
+                text_report = f"""
+中药多组分智能均化优化报告
+===========================================
+
+生成时间: {datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}
+优化引擎: {st.session_state.get('optimization_mode', '未知')}
+药物类型: {st.session_state.get('drug_type', '未知')}
+目标产量: {st.session_state.get('total_mix_amount', '未知')} 克
+
+AI分析摘要:
+{ai_summary}
+
+推荐配方:
+{selected_data[result['x'] > 0.001].to_string() if result and 'x' in result else '无有效配方'}
+
+报告生成完成。
+"""
+                
+                st.download_button(
+                    label="📄 下载文本报告",
+                    data=text_report.encode('utf-8'),
+                    file_name=f"优化报告_文本版_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+                st.success("✅ 文本报告已准备就绪！")
+                
+            except Exception as text_error:
+                st.error(f"文本报告生成也失败了: {text_error}")
 
 def create_export_functionality():
     """创建数据导出功能"""
@@ -2235,7 +2499,7 @@ def create_export_functionality():
 
         with col3:
             # PDF按钮现在将调用新函数
-            if st.button("📄 生成PDF报告", use_container_width=True, type="primary"):
+            if st.button("📄 生成文本报告", use_container_width=True, type="primary"):
                 generate_pdf_report()
     else:
         st.info("请先成功运行一次优化，然后才能导出报告。")
@@ -6218,6 +6482,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
