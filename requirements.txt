@@ -23,6 +23,7 @@ openpyxl>=3.1.0
 
 # PDF生成
 fpdf2>=2.7.0
+python-docx>=0.8.11
 
 # HTTP请求
 requests>=2.31.0
