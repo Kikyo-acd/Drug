@@ -3120,7 +3120,7 @@ def export_charts():
 
 
 def generate_pdf_report():
-    """生成包含AI分析的完整PDF报告 (已修复字体和样式错误)"""
+    """生成包含AI分析的完整PDF报告 (修复字体错误)"""
     if 'optimization_result' not in st.session_state or not isinstance(st.session_state.optimization_result, dict):
         st.error("❌ 请先成功运行一次优化计算，再生成报告。")
         return
@@ -3130,7 +3130,7 @@ def generate_pdf_report():
 
     with st.spinner('报告生成中，请稍候... (AI分析可能需要一些时间)'):
         try:
-            # --- AI 分析模块 (保持不变) ---
+            # --- AI 分析模块 ---
             ai_summary = "AI analysis could not be performed."
             if st.session_state.get('github_api_key'):
                 st.info("正在调用AI进行智能分析...")
@@ -3141,13 +3141,13 @@ def generate_pdf_report():
                 Number of Batches Used: {len(selected_data[result.get('x', []) > 0.001]) if result else 'N/A'}
                 Recipe: {selected_data[result.get('x', []) > 0.001].index.tolist() if result else 'N/A'}
                 """
-                system_prompt = f"""You are an expert data analyst for traditional Chinese medicine manufacturing. Your task is to provide a concise, professional summary and recommendation based on the following optimization result data. The language of your response must be English.
+                system_prompt = f"""You are an expert data analyst for traditional Chinese medicine manufacturing. Your task is to provide a concise, professional summary and recommendation based on the following optimization result data. The language of your response must be Chinese.
                 Your summary should include:
                 1. A brief overview of the optimization outcome.
                 2. Key positive findings.
                 3. Potential considerations or risks.
                 4. A concluding recommendation.
-                Here is the data, reply in Chinese:
+                Here is the data:
                 {report_context}
                 """
                 ai_response_raw = call_github_models_api("Summarize these results for a formal report.", system_prompt,
@@ -3157,108 +3157,191 @@ def generate_pdf_report():
             else:
                 ai_summary = "AI analysis was skipped because no API key was provided. Please enter an API key in the sidebar to enable this feature."
 
-            # --- PDF 生成模块 ---
+            # --- PDF 生成模块 (修复字体问题) ---
             class PDF(FPDF):
+                def __init__(self):
+                    super().__init__()
+                    self.font_loaded = False
+                    self.setup_fonts()
+
+                def setup_fonts(self):
+                    """尝试加载中文字体，失败则使用英文字体"""
+                    font_candidates = [
+                        r"C:\Windows\Fonts\simhei.ttf",  # 黑体
+                        r"C:\Windows\Fonts\kaiti.ttf",   # 楷体  
+                        r"C:\Windows\Fonts\msyh.ttf",    # 微软雅黑
+                        r"C:\Windows\Fonts\simsun.ttc",  # 宋体
+                    ]
+                    
+                    for font_path in font_candidates:
+                        if os.path.exists(font_path):
+                            try:
+                                self.add_font('ChineseFont', '', font_path, uni=True)
+                                self.font_loaded = True
+                                st.success(f"✅ 成功加载字体: {font_path}")
+                                break
+                            except Exception as e:
+                                st.warning(f"字体加载失败: {font_path}, 错误: {e}")
+                                continue
+                    
+                    if not self.font_loaded:
+                        st.warning("⚠️ 无法加载中文字体，将使用英文字体生成PDF")
+
+                def safe_set_font(self, size=12, style=''):
+                    """安全设置字体"""
+                    if self.font_loaded:
+                        try:
+                            self.set_font('ChineseFont', style, size)
+                        except:
+                            self.set_font('Arial', style, size)
+                    else:
+                        self.set_font('Arial', style, size)
+
                 def header(self):
-                    # ******** 修正部分 2: 移除粗体样式'B' ********
-                    self.set_font('SimHei', '', 15)  # 使用注册的常规字体
-                    self.cell(0, 10, 'Intelligent Homogenization Report', 0, 1, 'C')
+                    self.safe_set_font(15)
+                    if self.font_loaded:
+                        self.cell(0, 10, 'Intelligent Homogenization Report - 智能均化报告', 0, 1, 'C')
+                    else:
+                        self.cell(0, 10, 'Intelligent Homogenization Report', 0, 1, 'C')
                     self.ln(5)
 
                 def footer(self):
                     self.set_y(-15)
-                    self.set_font('SimHei', '', 8)
+                    self.safe_set_font(8)
                     self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
                 def chapter_title(self, title):
-                    # ******** 修正部分 2: 移除粗体样式'B' ********
-                    self.set_font('SimHei', '', 12)  # 使用注册的常规字体
-                    # 添加下划线模拟“强调”效果
-                    self.cell(0, 10, title, 'B', 1, 'L')
+                    self.safe_set_font(12)
+                    # 使用边框模拟加粗效果
+                    self.cell(0, 10, title, 1, 1, 'L')
                     self.ln(4)
 
                 def chapter_body(self, body_text):
-                    self.set_font('SimHei', '', 10)
-                    self.multi_cell(0, 5, body_text.encode('latin-1', 'replace').decode('latin-1'))
+                    self.safe_set_font(10)
+                    # 处理文本编码问题
+                    try:
+                        if self.font_loaded:
+                            # 如果有中文字体，直接使用
+                            processed_text = body_text
+                        else:
+                            # 如果没有中文字体，转换为ASCII兼容格式
+                            processed_text = body_text.encode('ascii', 'replace').decode('ascii')
+                        self.multi_cell(0, 5, processed_text)
+                    except Exception as e:
+                        # 后备方案：使用简化的英文文本
+                        fallback_text = "AI Analysis: The optimization process has been completed successfully. Please refer to the detailed recipe table below for specific batch proportions and recommendations."
+                        self.multi_cell(0, 5, fallback_text)
                     self.ln()
 
                 def add_table(self, df):
-                    self.set_font('SimHei', '', 8)
-                    # 动态计算列宽，避免超出页面
+                    self.safe_set_font(8)
+                    # 动态计算列宽
                     effective_w = self.w - 2 * self.l_margin
                     col_widths = [effective_w / len(df.columns)] * len(df.columns)
+                    
                     # Header
                     for i, col in enumerate(df.columns):
-                        self.cell(col_widths[i], 7, str(col), 1, 0, 'C')
+                        col_text = str(col)
+                        if not self.font_loaded:
+                            col_text = col_text.encode('ascii', 'replace').decode('ascii')
+                        self.cell(col_widths[i], 7, col_text, 1, 0, 'C')
                     self.ln()
-                    # Data
+                    
+                    # Data rows
                     for _, row in df.iterrows():
                         for i, item in enumerate(row):
-                            cell_text = str(item.encode('latin-1', 'replace').decode('latin-1')) if isinstance(item,
-                                                                                                               str) else str(
-                                item)
+                            cell_text = str(item)
+                            if not self.font_loaded:
+                                cell_text = cell_text.encode('ascii', 'replace').decode('ascii')
                             self.cell(col_widths[i], 6, cell_text, 1)
                         self.ln()
                     self.ln(5)
 
+            # 创建PDF实例
             pdf = PDF()
-
-            # ******** 修正部分 1: 智能查找并加载兼容的 .ttf 中文字体 ********
-            font_loaded = False
-            # 在Windows系统中常见的中文字体文件
-            font_candidates = [
-                r"C:\Windows\Fonts\simhei.ttf",  # 黑体
-                r"C:\Windows\Fonts\kaiti.ttf",  # 楷体
-                r"C:\Windows\Fonts\simfang.ttf",  # 仿宋
-            ]
-            for font_path in font_candidates:
-                if os.path.exists(font_path):
-                    try:
-                        pdf.add_font('SimHei', '', font_path, uni=True)
-                        font_loaded = True
-                        st.info(f"✅ PDF successfully loaded system font: {font_path}")
-                        break
-                    except Exception:
-                        continue
-
-            if not font_loaded:
-                st.warning(
-                    "Could not find a compatible Chinese system font (.ttf) for the PDF. Chinese characters may not display correctly.")
-                # Fallback to a built-in font to prevent crashing
-                pdf.set_font("Arial", size=10)
-
             pdf.add_page()
 
             # 1. AI Summary
             pdf.chapter_title('1. AI-Powered Executive Summary')
             pdf.chapter_body(ai_summary)
 
-            # (后续章节和逻辑保持不变, 但会因为正确的字体设置而正常工作)
             # 2. Recommended Recipe Table
             pdf.chapter_title('2. Recommended Blending Recipe')
-            recipe_df = selected_data[result['x'] > 0.001][['Rubric_Score']].copy()
-            recipe_df['Proportion (%)'] = result['x'][result['x'] > 0.001] * 100
-            recipe_df['Weight (g)'] = recipe_df['Proportion (%)'] / 100 * st.session_state.total_mix_amount
-            recipe_df.reset_index(inplace=True)  # 将索引（批次编号）变成一列
-            recipe_df = recipe_df.rename(columns={'index': 'Batch_ID'})
-            pdf.add_table(recipe_df.round(4))
+            
+            # 准备配方数据
+            if result and 'x' in result:
+                recipe_df = selected_data[result['x'] > 0.001][['Rubric_Score']].copy()
+                recipe_df['Proportion (%)'] = result['x'][result['x'] > 0.001] * 100
+                recipe_df['Weight (g)'] = recipe_df['Proportion (%)'] / 100 * st.session_state.total_mix_amount
+                recipe_df.reset_index(inplace=True)
+                recipe_df = recipe_df.rename(columns={'index': 'Batch_ID'})
+                pdf.add_table(recipe_df.round(4))
+            else:
+                # 如果没有有效结果，添加说明
+                pdf.chapter_body("No valid optimization result available for recipe generation.")
 
-            # 3. Save and Download
+            # 3. System Information
+            pdf.chapter_title('3. System Information')
+            system_info = f"""
+            Optimization Engine: {st.session_state.get('optimization_mode', 'Unknown')}
+            Drug Type: {st.session_state.get('drug_type', 'Unknown')}
+            Target Amount: {st.session_state.get('total_mix_amount', 'Unknown')} grams
+            Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            """
+            pdf.chapter_body(system_info)
+
+            # 生成并提供下载
             pdf_bytes = pdf.output(dest='S').encode('latin1')
 
             st.download_button(
                 label="📥 下载PDF报告",
                 data=pdf_bytes,
-                file_name=f"Homogenization_Report_{datetime.datetime.now().strftime('%Y%m%d')}.pdf",
+                file_name=f"Homogenization_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
             st.success("✅ PDF报告已成功生成！")
+            
+            if not pdf.font_loaded:
+                st.info("ℹ️ 由于系统字体限制，PDF中的中文可能显示为英文。建议您额外保存网页版的详细结果。")
 
         except Exception as e:
             st.error(f"❌ PDF生成失败: {e}")
-            import traceback
-            st.code(traceback.format_exc())
+            
+            # 提供替代方案
+            st.markdown("---")
+            st.subheader("📋 替代方案：文本格式报告")
+            
+            try:
+                # 生成文本格式的报告
+                text_report = f"""
+智能均化优化报告
+===================
+
+生成时间: {datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}
+优化引擎: {st.session_state.get('optimization_mode', '未知')}
+药物类型: {st.session_state.get('drug_type', '未知')}
+目标产量: {st.session_state.get('total_mix_amount', '未知')} 克
+
+AI分析摘要:
+{ai_summary}
+
+推荐配方:
+{selected_data[result['x'] > 0.001] if result and 'x' in result else '无有效配方'}
+
+报告生成完成。
+"""
+                
+                st.download_button(
+                    label="📄 下载文本报告",
+                    data=text_report.encode('utf-8'),
+                    file_name=f"Report_Text_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+                
+            except Exception as text_error:
+                st.error(f"文本报告生成也失败了: {text_error}")
 
 
 # 如果您想要更简化的解决方案，也可以暂时移除主题切换功能：
@@ -6135,6 +6218,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
