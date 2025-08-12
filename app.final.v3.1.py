@@ -2500,7 +2500,7 @@ def create_export_functionality():
         with col3:
             # PDF按钮现在将调用新函数
             if st.button("📄 生成文本报告", use_container_width=True, type="primary"):
-                generate_pdf_report()
+                generate_docx_report()
     else:
         st.info("请先成功运行一次优化，然后才能导出报告。")
 
@@ -6482,6 +6482,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
