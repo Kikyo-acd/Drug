@@ -10,6 +10,61 @@ import streamlit as st
 from PIL import Image
 import os
 
+# Block 1: 统一字体初始化 (替换所有旧的字体函数)
+import streamlit as st
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+import os
+import requests
+
+@st.cache_resource
+def initialize_font():
+    """
+    下载可靠的开源中文字体(思源黑体)并返回其FontProperties对象。
+    这是管理字体的唯一函数，对Linux服务器环境非常稳定。
+    """
+    font_url = "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf"
+    font_filename = "SourceHanSansSC-Regular.otf"
+    # 将字体文件放在当前工作目录
+    font_path = os.path.join(os.getcwd(), font_filename)
+
+    # 1. 如果字体文件不存在，则下载
+    if not os.path.exists(font_path):
+        st.info("中文字体文件不存在，正在从网络下载...")
+        try:
+            with st.spinner("正在下载字体: 思源黑体..."):
+                response = requests.get(font_url, timeout=30, stream=True)
+                if response.status_code == 200:
+                    with open(font_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    st.success("✅ 字体下载成功!")
+                else:
+                    st.error(f"字体下载失败，服务器返回状态码: {response.status_code}")
+                    return None
+        except Exception as e:
+            st.error(f"字体下载时发生网络错误: {e}")
+            return None
+
+    # 2. 从路径加载字体并返回 FontProperties 对象
+    if os.path.exists(font_path):
+        try:
+            # 这是在Matplotlib中直接使用字体文件最可靠的方法
+            font_prop = fm.FontProperties(fname=font_path)
+            # 全局设置坐标轴负号显示
+            plt.rcParams['axes.unicode_minus'] = False
+            print(f"✅ 成功加载字体: {font_prop.get_name()} (from {font_path})")
+            return font_prop
+        except Exception as e:
+            st.error(f"从路径加载字体失败: {e}")
+            return None
+    else:
+        st.error("字体文件下载后仍未找到，请检查文件系统权限。")
+        return None
+
+# 在脚本开头调用一次，获取全局字体属性对象
+FONT_PROP = initialize_font()
+
 # 检查是否有自定义图标
 favicon_path = "logo.png"  # 或 "favicon.ico"
 if os.path.exists(favicon_path):
@@ -381,67 +436,45 @@ def setup_robust_chinese_fonts():
 
 @st.cache_resource
 def download_and_setup_online_font():
-    """下载并设置在线中文字体 (v3 - 更换为CDN链接并强制刷新缓存)"""
+    """
+    下载并设置在线中文字体 (v4 - 终极版)
+    - 使用极稳定CDN链接
+    - 返回FontProperties对象以强制应用
+    """
     try:
         import requests
         import tempfile
         import matplotlib.font_manager as fm
-        import os
 
         st.info("系统字体不可用，正在尝试从CDN下载并配置开源中文字体...")
 
-        # 更换为稳定、高速的 jsDelivr CDN 链接
-        font_urls = [
-            ("文泉驿微米黑", "https://cdn.jsdelivr.net/gh/HuanTuo/fonts@master/wqy-microhei/wqy-microhei.ttc"),
-            ("站酷快乐体", "https://cdn.jsdelivr.net/gh/lxgw/zcool-font@master/zcool-fonts/ZCOOLKuaiLe-Regular.ttf"),
-            ("Noto Sans SC", "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanssc/NotoSansSC-Regular.ttf"),
-            ("思源黑体",
-             "https://cdn.jsdelivr.net/gh/adobe-fonts/source-han-sans@release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf")
-        ]
+        # 使用极稳定的字体仓库CDN链接
+        font_url = "https://cdn.fontend.cn/HanyiSentyTang.ttf"
+        font_display_name = "汉仪新蒂唐朝体"
 
-        for font_display_name, font_url in font_urls:
-            try:
-                with st.spinner(f"正在尝试下载字体: {font_display_name}..."):
-                    response = requests.get(font_url, timeout=30)
-                    if response.status_code == 200:
-                        file_suffix = os.path.splitext(font_url)[1]
+        with st.spinner(f"正在尝试下载字体: {font_display_name}..."):
+            response = requests.get(font_url, timeout=30)
+            if response.status_code == 200:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".ttf") as temp_font:
+                    temp_font.write(response.content)
+                    temp_font_path = temp_font.name
 
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_font:
-                            temp_font.write(response.content)
-                            temp_font_path = temp_font.name
+                # 直接创建并返回 FontProperties 对象
+                font_prop = fm.FontProperties(fname=temp_font_path)
 
-                        # 关键步骤：强制 Matplotlib 重建字体缓存
-                        # 这有助于解决刷新后字体失效的问题
-                        try:
-                            fm._load_fontmanager(try_read_cache=False)
-                        except Exception:
-                            st.warning("无法强制刷新Matplotlib字体缓存，但将继续尝试加载。")
+                # 顺便设置一下全局参数，以防万一
+                plt.rcParams['axes.unicode_minus'] = False
 
-                        # 注册字体
-                        fm.fontManager.addfont(temp_font_path)
-                        font_prop = fm.FontProperties(fname=temp_font_path)
-                        font_name = font_prop.get_name()
-
-                        # 设置matplotlib参数
-                        plt.rcParams['font.family'] = 'sans-serif'
-                        plt.rcParams['font.sans-serif'] = [font_name]
-                        plt.rcParams['axes.unicode_minus'] = False
-
-                        st.success(f"✅ 成功下载并配置字体: {font_name} ({font_display_name})")
-                        return True, font_name
-                    else:
-                        st.warning(f"下载 {font_display_name} 失败 (状态码: {response.status_code})。正在尝试下一个...")
-
-            except Exception as e:
-                st.warning(f"处理 {font_display_name} 时发生错误: {str(e)[:100]}... 正在尝试下一个...")
-                continue
-
-        st.error("❌ 所有备用在线字体均下载失败。图表中的中文将无法正常显示。")
-        return False, None
+                st.success(f"✅ 成功下载并配置字体: {font_prop.get_name()} ({font_display_name})")
+                # 返回成功状态、字体名称和最重要的字体属性对象
+                return True, font_prop.get_name(), font_prop
+            else:
+                st.error(f"下载 {font_display_name} 失败 (状态码: {response.status_code})。")
+                return False, None, None
 
     except Exception as e:
         st.error(f"字体下载模块发生严重错误: {e}")
-        return False, None
+        return False, None, None
 
 
 def show_optimization_content_compact():
@@ -1140,9 +1173,9 @@ def create_batch_quality_dashboard_chinese_robust(df, col_map, drug_type):
         st.info("建议使用英文标签版本")
 
 
-# 修改主界面中的数据分析部分
+# Block 2: 替换 update_analysis_dashboard 函数
 def update_analysis_dashboard():
-    """更新数据分析仪表板部分 (已修复NameError)"""
+    """更新数据分析仪表板部分 (已修复字体问题)"""
     st.markdown("---")
     with st.expander("📊 查看总数据分析仪表板", expanded=False):
         analysis_method = st.radio(
@@ -1155,19 +1188,17 @@ def update_analysis_dashboard():
         if st.button("📈 生成数据分析报告", use_container_width=True, type="secondary"):
             use_chinese_labels = False
 
-            # 首先判断是否需要使用中文
+            # 判断是否需要使用中文
             if analysis_method == "智能检测（推荐）":
-                # *** 修正：调用在文件前面已经定义的 setup_robust_chinese_fonts ***
-                font_success, _ = setup_robust_chinese_fonts()
-                if font_success:
+                # *** 修正：直接检查全局 FONT_PROP 对象是否存在 ***
+                if FONT_PROP:
                     use_chinese_labels = True
                     st.success("✅ 中文字体加载成功，使用中文标签显示。")
                 else:
                     st.warning("⚠️ 未找到可用中文字体，自动切换到英文标签显示。")
             elif analysis_method == "强制中文标签":
-                # *** 修正：调用在文件前面已经定义的 setup_robust_chinese_fonts ***
-                font_success, _ = setup_robust_chinese_fonts()
-                if font_success:
+                # *** 修正：直接检查全局 FONT_PROP 对象是否存在 ***
+                if FONT_PROP:
                     use_chinese_labels = True
                     st.success("✅ 强制使用中文标签显示。")
                 else:
@@ -2986,120 +3017,133 @@ def mutate(individual, prob, strength):
 
 
 def create_batch_quality_dashboard_chinese(df, col_map, drug_type):
-    """创建批次质量仪表板 - 中文大字体版本"""
+    """
+    创建批次质量仪表板 - 中文大字体版本 (已修复字体问题)
+    """
     st.subheader("📊 批次质量分析仪表板")
 
-    # 使用支持中文的图形创建
-    fig, axes = create_chinese_figure(nrows=2, ncols=3, figsize=(18, 12))
+    # 检查全局字体对象是否存在
+    if FONT_PROP is None:
+        st.error("中文字体未成功加载，无法生成中文图表。")
+        return
 
-    # 确保axes是二维数组
-    if len(axes.shape) == 1:
-        axes = axes.reshape(2, 3)
+    # 创建图形和子图
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(20, 14), dpi=100)
+    fig.suptitle('批次质量分析仪表板', fontsize=24, fontproperties=FONT_PROP)
 
-    # 1. 质量评分分布
+    # 确保axes是二维数组以便索引
+    if not isinstance(axes, np.ndarray) or len(axes.shape) == 1:
+        axes = np.array(axes).reshape(2, 3)
+
+    # --- 图 1: 质量评分分布 ---
     if 'Rubric_Score' in df.columns:
-        axes[0, 0].hist(df['Rubric_Score'], bins=20, alpha=0.7, color='skyblue', edgecolor='black')
-        set_chinese_labels(axes[0, 0],
-                           title="质量评分分布",
-                           xlabel="评分",
-                           ylabel="批次数量")
+        ax = axes[0, 0]
+        ax.hist(df['Rubric_Score'], bins=20, alpha=0.75, color='skyblue', edgecolor='black')
+        ax.set_title("质量评分分布", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xlabel("评分", fontproperties=FONT_PROP, fontsize=16)
+        ax.set_ylabel("批次数量", fontproperties=FONT_PROP, fontsize=16)
 
-    # 2. 核心指标相关性散点图
+    # --- 图 2: 核心指标相关性散点图 ---
+    ax = axes[0, 1]
     if drug_type == '甘草':
-        gg_col = col_map.get('gg_g')
-        ga_col = col_map.get('ga_g')
+        gg_col, ga_col = col_map.get('gg_g'), col_map.get('ga_g')
         if gg_col and ga_col and gg_col in df.columns and ga_col in df.columns:
-            scatter = axes[0, 1].scatter(df[gg_col], df[ga_col],
-                                         c=df['Rubric_Score'], cmap='viridis',
-                                         alpha=0.7, s=60, edgecolors='black')
-            set_chinese_labels(axes[0, 1],
-                               title="甘草苷 vs 甘草酸",
-                               xlabel="甘草苷含量 (mg/g)",
-                               ylabel="甘草酸含量 (mg/g)")
-            # 添加颜色条
-            cbar = plt.colorbar(scatter, ax=axes[0, 1])
-            cbar.set_label('质量评分', fontsize=12)
+            scatter = ax.scatter(df[gg_col], df[ga_col], c=df['Rubric_Score'], cmap='viridis', alpha=0.7, s=80, edgecolors='black')
+            ax.set_title("甘草苷 vs 甘草酸", fontproperties=FONT_PROP, fontsize=18)
+            ax.set_xlabel(f"甘草苷含量 (mg/g)", fontproperties=FONT_PROP, fontsize=16)
+            ax.set_ylabel(f"甘草酸含量 (mg/g)", fontproperties=FONT_PROP, fontsize=16)
+            cbar = plt.colorbar(scatter, ax=ax)
+            cbar.set_label('质量评分', fontproperties=FONT_PROP, size=14)
+            for t in cbar.ax.get_yticklabels():
+                t.set_fontproperties(FONT_PROP)
     else:
-        # 通用模式的处理
+        # 通用模式处理
         if len(st.session_state.get('custom_metrics_info', [])) >= 2:
-            col1 = col_map.get('metric_0')
-            col2 = col_map.get('metric_1')
+            metric_names = st.session_state.get('custom_metrics_info', [])
+            col1, col2 = col_map.get('metric_0'), col_map.get('metric_1')
             if col1 and col2 and col1 in df.columns and col2 in df.columns:
-                scatter = axes[0, 1].scatter(df[col1], df[col2],
-                                             c=df['Rubric_Score'], cmap='viridis',
-                                             alpha=0.7, s=60, edgecolors='black')
-                metric_names = st.session_state.get('custom_metrics_info', [])
-                set_chinese_labels(axes[0, 1],
-                                   title=f"{metric_names[0]} vs {metric_names[1]}",
-                                   xlabel=f"{metric_names[0]}",
-                                   ylabel=f"{metric_names[1]}")
-                cbar = plt.colorbar(scatter, ax=axes[0, 1])
-                cbar.set_label('质量评分', fontsize=12)
+                scatter = ax.scatter(df[col1], df[col2], c=df['Rubric_Score'], cmap='viridis', alpha=0.7, s=80, edgecolors='black')
+                ax.set_title(f"{metric_names[0]} vs {metric_names[1]}", fontproperties=FONT_PROP, fontsize=18)
+                ax.set_xlabel(metric_names[0], fontproperties=FONT_PROP, fontsize=16)
+                ax.set_ylabel(metric_names[1], fontproperties=FONT_PROP, fontsize=16)
+                cbar = plt.colorbar(scatter, ax=ax)
+                cbar.set_label('质量评分', fontproperties=FONT_PROP, size=14)
+                for t in cbar.ax.get_yticklabels():
+                    t.set_fontproperties(FONT_PROP)
 
-    # 3. Top 10批次评分
-    top_10_batches = df.nlargest(10, 'Rubric_Score')
-    bars = axes[0, 2].bar(range(len(top_10_batches)), top_10_batches['Rubric_Score'],
-                          color='green', alpha=0.7, edgecolor='black')
-    set_chinese_labels(axes[0, 2],
-                       title="Top 10 批次质量评分",
-                       xlabel="批次排名",
-                       ylabel="质量评分")
-    # 添加数值标注
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        axes[0, 2].text(bar.get_x() + bar.get_width() / 2., height + 0.01,
-                        f'{height:.2f}', ha='center', va='bottom', fontsize=10)
+    # --- 图 3: Top 10批次评分 ---
+    if 'Rubric_Score' in df.columns:
+        ax = axes[0, 2]
+        top_10_batches = df.nlargest(10, 'Rubric_Score')
+        bars = ax.bar(range(len(top_10_batches)), top_10_batches['Rubric_Score'], color='lightgreen', alpha=0.8, edgecolor='black')
+        ax.set_title("Top 10 批次质量评分", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xlabel("批次排名", fontproperties=FONT_PROP, fontsize=16)
+        ax.set_ylabel("质量评分", fontproperties=FONT_PROP, fontsize=16)
+        ax.set_xticks(range(len(top_10_batches)))
+        ax.set_xticklabels(top_10_batches.index, rotation=45, ha='right', fontproperties=FONT_PROP, fontsize=12)
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height, f'{height:.2f}', ha='center', va='bottom', fontproperties=FONT_PROP, fontsize=12)
 
-    # 4. 成本效益分析
+    # --- 图 4: 成本效益分析 ---
+    ax = axes[1, 0]
     cost_col = col_map.get('cost', '模拟成本')
-    if cost_col in df.columns:
-        scatter = axes[1, 0].scatter(df[cost_col], df['Rubric_Score'],
-                                     alpha=0.7, s=60, color='orange', edgecolors='black')
-        set_chinese_labels(axes[1, 0],
-                           title="成本效益分析",
-                           xlabel="单位成本 (元/克)",
-                           ylabel="质量评分")
-
-        # 添加趋势线
+    if cost_col in df.columns and 'Rubric_Score' in df.columns:
+        ax.scatter(df[cost_col], df['Rubric_Score'], alpha=0.7, s=80, color='orange', edgecolors='black')
+        ax.set_title("成本效益分析", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xlabel("单位成本 (元/克)", fontproperties=FONT_PROP, fontsize=16)
+        ax.set_ylabel("质量评分", fontproperties=FONT_PROP, fontsize=16)
         try:
             z = np.polyfit(df[cost_col], df['Rubric_Score'], 1)
             p = np.poly1d(z)
-            axes[1, 0].plot(df[cost_col], p(df[cost_col]), "r--", alpha=0.8, linewidth=2)
+            ax.plot(df[cost_col], p(df[cost_col]), "r--", alpha=0.8, linewidth=2)
         except:
             pass
 
-    # 5. 库存状况分析
+    # --- 图 5: 库存状况分析 ---
+    ax = axes[1, 1]
     if '预设库存量' in df.columns:
-        inventory_data = df['预设库存量'].fillna(0)
-        # 过滤掉0值
-        inventory_data = inventory_data[inventory_data > 0]
-        if len(inventory_data) > 0:
-            axes[1, 1].hist(inventory_data, bins=15, alpha=0.7, color='purple', edgecolor='black')
-            set_chinese_labels(axes[1, 1],
-                               title="库存量分布",
-                               xlabel="库存量 (克)",
-                               ylabel="批次数量")
+        inventory_data = df['预设库存量'].fillna(0).loc[lambda x: x > 0]
+        if not inventory_data.empty:
+            ax.hist(inventory_data, bins=15, alpha=0.75, color='purple', edgecolor='black')
+            ax.set_title("库存量分布 (非0库存)", fontproperties=FONT_PROP, fontsize=18)
+            ax.set_xlabel("库存量 (克)", fontproperties=FONT_PROP, fontsize=16)
+            ax.set_ylabel("批次数量", fontproperties=FONT_PROP, fontsize=16)
 
-    # 6. 相似度分布
+    # --- 图 6: 相似度分布 ---
+    ax = axes[1, 2]
     sim_col = col_map.get('sim')
     if sim_col and sim_col in df.columns:
-        axes[1, 2].hist(df[sim_col], bins=20, alpha=0.7, color='red', edgecolor='black')
-        set_chinese_labels(axes[1, 2],
-                           title="指纹图谱相似度分布",
-                           xlabel="相似度",
-                           ylabel="批次数量")
-        # 添加阈值线
-        axes[1, 2].axvline(x=0.9, color='green', linestyle='--', linewidth=2, label='标准线(0.9)')
-        axes[1, 2].legend(fontsize=12)
+        ax.hist(df[sim_col], bins=20, alpha=0.75, color='crimson', edgecolor='black')
+        ax.set_title("指纹图谱相似度分布", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xlabel("相似度", fontproperties=FONT_PROP, fontsize=16)
+        ax.set_ylabel("批次数量", fontproperties=FONT_PROP, fontsize=16)
+        ax.axvline(x=0.9, color='green', linestyle='--', linewidth=2, label='标准线(0.9)')
+        ax.legend(prop=FONT_PROP, fontsize=14)
 
-    plt.tight_layout()
+    # --- 对所有子图统一设置字体和网格 ---
+    for ax in axes.flat:
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontproperties(FONT_PROP)
+            label.set_fontsize(12)
+        ax.grid(True, alpha=0.4, linestyle=':')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # 调整布局为标题和标签留出空间
     st.pyplot(fig)
+    plt.close(fig) # 绘制后关闭图形，释放内存
 
 
 def create_ingredient_analysis_charts_chinese(df, col_map, drug_type):
-    """创建成分分析图表 - 中文大字体版本"""
+    """
+    创建成分分析图表 - 中文大字体版本 (已修复字体问题)
+    """
     st.subheader("🧪 成分含量深度分析")
 
+    if FONT_PROP is None:
+        st.error("中文字体未成功加载，无法生成中文图表。")
+        return
+
+    # 根据药物类型获取指标
     if drug_type == '甘草':
         metrics = ['gg_g', 'ga_g', 'igs_mg', 'igg_mg', 'gs_mg']
         metric_names = ['甘草苷', '甘草酸', '异甘草素', '异甘草苷', '甘草素']
@@ -3107,89 +3151,96 @@ def create_ingredient_analysis_charts_chinese(df, col_map, drug_type):
         metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
         metric_names = st.session_state.get('custom_metrics_info', [])
 
-    # 获取有效的指标
-    valid_metrics = []
-    valid_names = []
+    # 获取数据中实际存在的有效指标
+    valid_metrics_cols, valid_names = [], []
     for metric, name in zip(metrics, metric_names):
         col_name = col_map.get(metric)
         if col_name and col_name in df.columns:
-            valid_metrics.append(col_name)
+            valid_metrics_cols.append(col_name)
             valid_names.append(name)
 
-    if valid_metrics:
-        fig, axes = create_chinese_figure(nrows=2, ncols=2, figsize=(16, 12))
+    if not valid_metrics_cols:
+        st.info("没有可用于深度分析的成分数据。")
+        return
 
-        # 1. 箱线图
-        box_data = [df[col].dropna() for col in valid_metrics]
-        box_plot = axes[0, 0].boxplot(box_data, labels=valid_names, patch_artist=True)
+    # --- 创建图表 ---
+    fig, axes = plt.subplots(2, 2, figsize=(18, 16), dpi=100)
+    fig.suptitle('成分含量深度分析', fontsize=24, fontproperties=FONT_PROP)
 
-        # 美化箱线图
-        colors = plt.cm.Set3(np.linspace(0, 1, len(valid_names)))
-        for patch, color in zip(box_plot['boxes'], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.7)
+    colors = plt.cm.Pastel2(np.linspace(0, 1, len(valid_names)))
 
-        set_chinese_labels(axes[0, 0],
-                           title="成分含量分布（箱线图）",
-                           xlabel="成分指标",
-                           ylabel="含量")
-        axes[0, 0].tick_params(axis='x', rotation=45, labelsize=11)
+    # --- 图 1: 箱线图 ---
+    ax = axes[0, 0]
+    box_data = [df[col].dropna() for col in valid_metrics_cols]
+    box_plot = ax.boxplot(box_data, labels=valid_names, patch_artist=True, vert=True)
+    ax.set_title("成分含量分布 (箱线图)", fontproperties=FONT_PROP, fontsize=18)
+    ax.set_ylabel("含量", fontproperties=FONT_PROP, fontsize=16)
+    ax.tick_params(axis='x', labelrotation=30, labelsize=12)
+    for patch, color in zip(box_plot['boxes'], colors):
+        patch.set_facecolor(color)
 
-        # 2. 小提琴图（如果数据足够）
-        if len(valid_metrics) <= 6:  # 避免图表过于拥挤
-            positions = range(len(valid_metrics))
-            violin_parts = axes[0, 1].violinplot(box_data, positions, showmeans=True, showmedians=True)
+    # --- 图 2: 小提琴图 ---
+    ax = axes[0, 1]
+    try:
+        violin_parts = ax.violinplot(box_data, showmeans=True)
+        ax.set_title("成分含量分布 (密度图)", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xticks(np.arange(1, len(valid_names) + 1))
+        ax.set_xticklabels(valid_names)
+        ax.set_ylabel("含量", fontproperties=FONT_PROP, fontsize=16)
+        ax.tick_params(axis='x', labelrotation=30, labelsize=12)
+        for i, pc in enumerate(violin_parts['bodies']):
+            pc.set_facecolor(colors[i % len(colors)])
+            pc.set_alpha(0.7)
+    except Exception:
+        ax.text(0.5, 0.5, '数据不适合绘制小提琴图', ha='center', va='center', fontproperties=FONT_PROP, fontsize=14)
+        ax.set_title("成分含量分布 (密度图)", fontproperties=FONT_PROP, fontsize=18)
 
-            # 美化小提琴图
-            for i, pc in enumerate(violin_parts['bodies']):
-                pc.set_facecolor(colors[i])
-                pc.set_alpha(0.7)
+    # --- 图 3: 相关性热力图 ---
+    ax = axes[1, 0]
+    if len(valid_metrics_cols) >= 2:
+        corr_matrix = df[valid_metrics_cols].corr()
+        corr_matrix.columns = valid_names
+        corr_matrix.index = valid_names
+        sns.heatmap(corr_matrix, ax=ax, annot=True, cmap='coolwarm', fmt=".2f", linewidths=.5,
+                    annot_kws={"fontproperties": FONT_PROP, "size": 12})
+        ax.set_title("成分间相关性热力图", fontproperties=FONT_PROP, fontsize=18)
+    else:
+        ax.text(0.5, 0.5, '需要至少2个指标才能计算相关性', ha='center', va='center', fontproperties=FONT_PROP,
+                fontsize=14)
+        ax.set_title("成分间相关性热力图", fontproperties=FONT_PROP, fontsize=18)
 
-            set_chinese_labels(axes[0, 1],
-                               title="成分含量分布（密度图）",
-                               xlabel="成分指标",
-                               ylabel="含量")
-            axes[0, 1].set_xticks(positions)
-            axes[0, 1].set_xticklabels(valid_names, rotation=45, fontsize=11)
+    # --- 图 4: 双指标关系与质量评分 ---
+    ax = axes[1, 1]
+    if len(valid_metrics_cols) >= 2 and 'Rubric_Score' in df.columns:
+        scatter = ax.scatter(df[valid_metrics_cols[0]], df[valid_metrics_cols[1]], c=df['Rubric_Score'], cmap='viridis',
+                             s=80, alpha=0.7, edgecolors='black')
+        ax.set_title(f"{valid_names[0]} vs {valid_names[1]}", fontproperties=FONT_PROP, fontsize=18)
+        ax.set_xlabel(valid_names[0], fontproperties=FONT_PROP, fontsize=16)
+        ax.set_ylabel(valid_names[1], fontproperties=FONT_PROP, fontsize=16)
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label("质量评分", fontproperties=FONT_PROP, size=14)
+        for t in cbar.ax.get_yticklabels():
+            t.set_fontproperties(FONT_PROP)
+    else:
+        ax.text(0.5, 0.5, '需要至少2个指标和质量评分', ha='center', va='center', fontproperties=FONT_PROP, fontsize=14)
+        ax.set_title("双指标关系", fontproperties=FONT_PROP, fontsize=18)
 
-        # 3. 相关性热力图
-        if len(valid_metrics) >= 2:
-            corr_matrix = df[valid_metrics].corr()
-            im = axes[1, 0].imshow(corr_matrix, cmap='RdYlBu_r', aspect='auto', vmin=-1, vmax=1)
+    # --- 对所有子图统一设置字体和网格 ---
+    for ax in axes.flat:
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontproperties(FONT_PROP)
+        ax.grid(True, linestyle=':', alpha=0.6)
 
-            # 设置标签
-            axes[1, 0].set_xticks(range(len(valid_names)))
-            axes[1, 0].set_yticks(range(len(valid_names)))
-            axes[1, 0].set_xticklabels(valid_names, rotation=45, fontsize=11)
-            axes[1, 0].set_yticklabels(valid_names, fontsize=11)
+    # 特别处理热力图的标签字体
+    ax_heatmap = axes[1, 0]
+    ax_heatmap.tick_params(axis='x', labelrotation=30)
+    for label in ax_heatmap.get_xticklabels() + ax_heatmap.get_yticklabels():
+        label.set_fontproperties(FONT_PROP)
+        label.set_fontsize(12)
 
-            # 添加相关系数标注
-            for i in range(len(valid_names)):
-                for j in range(len(valid_names)):
-                    text = axes[1, 0].text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
-                                           ha='center', va='center', fontsize=10, fontweight='bold')
-
-            set_chinese_labels(axes[1, 0], title="成分间相关性热力图")
-
-            # 添加颜色条
-            cbar = plt.colorbar(im, ax=axes[1, 0])
-            cbar.set_label('相关系数', fontsize=12)
-
-        # 4. 质量-成分散点图
-        if len(valid_metrics) >= 2:
-            scatter = axes[1, 1].scatter(df[valid_metrics[0]], df[valid_metrics[1]],
-                                         c=df['Rubric_Score'], cmap='viridis',
-                                         s=80, alpha=0.7, edgecolors='black')
-            set_chinese_labels(axes[1, 1],
-                               title="双指标关系（颜色=质量评分）",
-                               xlabel=valid_names[0],
-                               ylabel=valid_names[1])
-
-            cbar = plt.colorbar(scatter, ax=axes[1, 1])
-            cbar.set_label('质量评分', fontsize=12)
-
-        plt.tight_layout()
-        st.pyplot(fig)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    st.pyplot(fig)
+    plt.close(fig)  # 绘制后关闭图形，释放内存
 
 
 def apply_dark_theme():
