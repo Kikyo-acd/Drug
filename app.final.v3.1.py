@@ -381,50 +381,61 @@ def setup_robust_chinese_fonts():
 
 @st.cache_resource
 def download_and_setup_online_font():
-    """下载并设置在线中文字体"""
+    """下载并设置在线中文字体 (更换为兼容性更好的字体)"""
     try:
         import requests
         import tempfile
-        import zipfile
+        import matplotlib.font_manager as fm
+        import os
 
-        st.info("正在下载开源中文字体...")
+        st.info("系统字体不可用，正在尝试下载并配置开源中文字体...")
 
-        # 使用更稳定的字体源
+        # 使用更稳定、兼容性更好的字体源 (优先使用TTF/TTC格式)
         font_urls = [
-            "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
-            "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf"
+            ("文泉驿微米黑", "https://raw.githubusercontent.com/HuanTuo/fonts/master/wqy-microhei/wqy-microhei.ttc"),
+            ("Noto Sans SC",
+             "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC-Regular.ttf"),
+            ("思源黑体",
+             "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/release/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf")
         ]
 
-        for font_url in font_urls:
+        for font_display_name, font_url in font_urls:
             try:
-                response = requests.get(font_url, timeout=30)
-                if response.status_code == 200:
-                    # 保存字体文件
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.otf') as temp_font:
-                        temp_font.write(response.content)
-                        temp_font_path = temp_font.name
+                with st.spinner(f"正在下载字体: {font_display_name}..."):
+                    response = requests.get(font_url, timeout=30)
+                    if response.status_code == 200:
+                        # 获取文件后缀名
+                        file_suffix = os.path.splitext(font_url)[1]
 
-                    # 注册字体
-                    fm.fontManager.addfont(temp_font_path)
-                    font_prop = fm.FontProperties(fname=temp_font_path)
-                    font_name = font_prop.get_name()
+                        # 保存字体文件到临时文件
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_suffix) as temp_font:
+                            temp_font.write(response.content)
+                            temp_font_path = temp_font.name
 
-                    # 设置matplotlib
-                    plt.rcParams['font.family'] = 'sans-serif'
-                    plt.rcParams['font.sans-serif'] = [font_name]
-                    plt.rcParams['axes.unicode_minus'] = False
+                        # 注册字体
+                        fm.fontManager.addfont(temp_font_path)
+                        font_prop = fm.FontProperties(fname=temp_font_path)
+                        font_name = font_prop.get_name()
 
-                    st.success(f"✅ 成功下载并配置字体: {font_name}")
-                    return True, font_name
+                        # 设置matplotlib参数
+                        plt.rcParams['font.family'] = 'sans-serif'
+                        plt.rcParams['font.sans-serif'] = [font_name]
+                        plt.rcParams['axes.unicode_minus'] = False
+
+                        st.success(f"✅ 成功下载并配置字体: {font_name} ({font_display_name})")
+                        return True, font_name
+                    else:
+                        st.warning(f"下载 {font_display_name} 失败 (状态码: {response.status_code})。正在尝试下一个...")
 
             except Exception as e:
+                st.warning(f"处理 {font_display_name} 时发生错误: {e}。正在尝试下一个...")
                 continue
 
-        st.warning("⚠️ 无法下载在线字体，将使用英文标签显示")
+        st.error("❌ 所有备用在线字体均下载失败。图表中的中文将无法正常显示。")
         return False, None
 
     except Exception as e:
-        st.error(f"字体下载失败: {e}")
+        st.error(f"字体下载模块发生严重错误: {e}")
         return False, None
 
 
