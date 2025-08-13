@@ -5892,8 +5892,6 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
     # 替换原有的数据可视化选项
     update_analysis_dashboard()
 
-    # 添加字体诊断功能到侧边栏
-    diagnose_font_issues()
 
     # 返回功能
     st.markdown("---")
