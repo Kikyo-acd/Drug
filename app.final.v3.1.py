@@ -693,6 +693,70 @@ def show_card_details(card_type):
             elif card_type == "precision":
                 show_precision_content_compact()
 
+# 设置matplotlib支持中文显示和字体大小
+def setup_chinese_fonts():
+    """配置matplotlib中文字体显示"""
+
+    # 基础字体大小设置
+    plt.rcParams.update({
+        'font.size': 14,  # 基础字体大小
+        'axes.titlesize': 16,  # 图表标题字体大小
+        'axes.labelsize': 14,  # 坐标轴标签字体大小
+        'xtick.labelsize': 12,  # x轴刻度标签字体大小
+        'ytick.labelsize': 12,  # y轴刻度标签字体大小
+        'legend.fontsize': 12,  # 图例字体大小
+        'figure.titlesize': 18,  # 整个图形标题字体大小
+        'figure.figsize': (12, 8),  # 默认图形尺寸
+        'figure.dpi': 100,  # 图形分辨率
+    })
+
+    # 检测系统并设置相应的中文字体
+    system = platform.system()
+
+    if system == "Windows":
+        # Windows系统字体
+        fonts = ['SimHei', 'Microsoft YaHei', 'KaiTi', 'FangSong']
+    elif system == "Darwin":  # macOS
+        # macOS系统字体
+        fonts = ['Arial Unicode MS', 'Songti SC', 'STHeiti', 'PingFang SC']
+    else:  # Linux
+        # Linux系统字体
+        fonts = ['DejaVu Sans', 'WenQuanYi Micro Hei', 'AR PL UKai CN', 'Noto Sans CJK SC']
+
+    # 尝试设置字体
+    font_set = False
+    for font in fonts:
+        try:
+            plt.rcParams['font.sans-serif'] = [font]
+            # 测试字体是否可用
+            fig, ax = plt.subplots(figsize=(1, 1))
+            ax.text(0.5, 0.5, '测试中文', fontsize=12)
+            plt.close(fig)
+            font_set = True
+            print(f"✅ 成功设置中文字体: {font}")
+            break
+        except Exception as e:
+            continue
+
+    if not font_set:
+        # 如果都不行，尝试下载和使用网络字体
+        try:
+            import urllib.request
+            import matplotlib.font_manager as fm
+
+            # 下载开源中文字体
+            font_url = "https://github.com/adobe-fonts/source-han-sans/releases/download/2.004R/SourceHanSansSC.zip"
+            # 这里简化处理，实际可以下载字体文件
+            plt.rcParams['font.sans-serif'] = ['sans-serif']
+            print("⚠️  使用默认字体，可能无法正确显示中文")
+        except:
+            plt.rcParams['font.sans-serif'] = ['sans-serif']
+            print("⚠️  字体设置失败，使用系统默认字体")
+
+    # 解决负号显示问题
+    plt.rcParams['axes.unicode_minus'] = False
+
+    return font_set
 
 def create_interactive_info_cards():
     """创建可交互的信息卡片 - 优化版布局"""
@@ -1401,70 +1465,7 @@ import platform
 import os
 
 
-# 设置matplotlib支持中文显示和字体大小
-def setup_chinese_fonts():
-    """配置matplotlib中文字体显示"""
 
-    # 基础字体大小设置
-    plt.rcParams.update({
-        'font.size': 14,  # 基础字体大小
-        'axes.titlesize': 16,  # 图表标题字体大小
-        'axes.labelsize': 14,  # 坐标轴标签字体大小
-        'xtick.labelsize': 12,  # x轴刻度标签字体大小
-        'ytick.labelsize': 12,  # y轴刻度标签字体大小
-        'legend.fontsize': 12,  # 图例字体大小
-        'figure.titlesize': 18,  # 整个图形标题字体大小
-        'figure.figsize': (12, 8),  # 默认图形尺寸
-        'figure.dpi': 100,  # 图形分辨率
-    })
-
-    # 检测系统并设置相应的中文字体
-    system = platform.system()
-
-    if system == "Windows":
-        # Windows系统字体
-        fonts = ['SimHei', 'Microsoft YaHei', 'KaiTi', 'FangSong']
-    elif system == "Darwin":  # macOS
-        # macOS系统字体
-        fonts = ['Arial Unicode MS', 'Songti SC', 'STHeiti', 'PingFang SC']
-    else:  # Linux
-        # Linux系统字体
-        fonts = ['DejaVu Sans', 'WenQuanYi Micro Hei', 'AR PL UKai CN', 'Noto Sans CJK SC']
-
-    # 尝试设置字体
-    font_set = False
-    for font in fonts:
-        try:
-            plt.rcParams['font.sans-serif'] = [font]
-            # 测试字体是否可用
-            fig, ax = plt.subplots(figsize=(1, 1))
-            ax.text(0.5, 0.5, '测试中文', fontsize=12)
-            plt.close(fig)
-            font_set = True
-            print(f"✅ 成功设置中文字体: {font}")
-            break
-        except Exception as e:
-            continue
-
-    if not font_set:
-        # 如果都不行，尝试下载和使用网络字体
-        try:
-            import urllib.request
-            import matplotlib.font_manager as fm
-
-            # 下载开源中文字体
-            font_url = "https://github.com/adobe-fonts/source-han-sans/releases/download/2.004R/SourceHanSansSC.zip"
-            # 这里简化处理，实际可以下载字体文件
-            plt.rcParams['font.sans-serif'] = ['sans-serif']
-            print("⚠️  使用默认字体，可能无法正确显示中文")
-        except:
-            plt.rcParams['font.sans-serif'] = ['sans-serif']
-            print("⚠️  字体设置失败，使用系统默认字体")
-
-    # 解决负号显示问题
-    plt.rcParams['axes.unicode_minus'] = False
-
-    return font_set
 
 
 # 调用字体设置函数
