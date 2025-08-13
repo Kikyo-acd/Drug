@@ -3648,71 +3648,127 @@ def add_theme_toggle_simple():
         # 明亮模式使用默认样式，不需要额外CSS
 
 
-def create_ingredient_analysis_charts(df, col_map, drug_type):
-    """创建成分分析图表"""
-    st.subheader("🧪 成分含量深度分析")
-
-    if drug_type == '甘草':
-        # 甘草模式的详细分析
-        metrics = ['gg_g', 'ga_g', 'igs_mg', 'igg_mg', 'gs_mg']
-        metric_names = ['甘草苷', '甘草酸', '异甘草素', '异甘草苷', '甘草素']
+def create_ingredient_analysis_charts(df, col_map, drug_type, use_chinese=True):
+    """
+    创建成分分析图表 (统一版本，支持中英文，修复了TypeError和字体问题)
+    """
+    if use_chinese:
+        st.subheader("🧪 成分含量深度分析")
+        title_prefix = ""
+        labels = {
+            "box": "成分含量分布（箱线图）",
+            "violin": "成分含量分布（密度图）",
+            "corr": "成分间相关性热力图",
+            "scatter": "双指标关系（颜色=质量评分）",
+            "xlabel": "成分指标",
+            "ylabel": "含量",
+            "corr_label": "相关系数",
+            "quality_score": "质量评分"
+        }
     else:
-        # 通用模式分析
-        metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
-        metric_names = st.session_state.get('custom_metrics_info', [])
+        st.subheader("🧪 Ingredient Content Deep Analysis")
+        title_prefix = " (English Labels)"
+        labels = {
+            "box": "Ingredient Content Distribution (Box Plot)",
+            "violin": "Ingredient Content Distribution (Violin Plot)",
+            "corr": "Ingredient Correlation Heatmap",
+            "scatter": "Dual-Metric Relationship (Color=Quality Score)",
+            "xlabel": "Component",
+            "ylabel": "Content",
+            "corr_label": "Correlation",
+            "quality_score": "Quality Score"
+        }
 
-    # 创建箱线图和小提琴图
-    valid_metrics = []
+    # 根据药物类型确定要分析的指标
+    if drug_type == '甘草':
+        metrics = ['gg_g', 'ga_g', 'igs_mg', 'igg_mg', 'gs_mg']
+        metric_names_ch = ['甘草苷', '甘草酸', '异甘草素', '异甘草苷', '甘草素']
+        metric_names_en = ['Glycyrrhizin', 'Glycyrrhizic Acid', 'Isoliquiritin', 'Isoliquiritigenin', 'Liquiritin']
+    else:
+        metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
+        metric_names_ch = st.session_state.get('custom_metrics_info', [])
+        metric_names_en = [f"Metric {i + 1}" for i in range(len(metric_names_ch))]
+
+    metric_names = metric_names_ch if use_chinese else metric_names_en
+
+    # 获取数据中实际存在的有效指标
+    valid_metrics_cols = []
     valid_names = []
     for metric, name in zip(metrics, metric_names):
         col_name = col_map.get(metric)
         if col_name and col_name in df.columns:
-            valid_metrics.append(col_name)
+            valid_metrics_cols.append(col_name)
             valid_names.append(name)
 
-    if valid_metrics:
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    if not valid_metrics_cols:
+        st.info("没有可用于深度分析的成分数据。")
+        return
 
-        # 箱线图
-        df[valid_metrics].boxplot(ax=axes[0, 0])
-        axes[0, 0].set_title('成分含量分布（箱线图）')
-        axes[0, 0].set_xticklabels(valid_names, rotation=45)
+    # 创建图表
+    fig, axes = plt.subplots(2, 2, figsize=(16, 14), dpi=100)
 
-        # 小提琴图
-        positions = range(len(valid_metrics))
-        violin_parts = axes[0, 1].violinplot([df[col].dropna() for col in valid_metrics], positions)
-        axes[0, 1].set_title('成分含量分布（密度图）')
-        axes[0, 1].set_xticks(positions)
-        axes[0, 1].set_xticklabels(valid_names, rotation=45)
+    # 1. 箱线图 (Box Plot)
+    box_data = [df[col].dropna() for col in valid_metrics_cols]
+    box_plot = axes[0, 0].boxplot(box_data, labels=valid_names, patch_artist=True, vert=True)
+    axes[0, 0].set_title(labels["box"] + title_prefix, fontsize=16)
+    axes[0, 0].set_ylabel(labels["ylabel"], fontsize=12)
+    axes[0, 0].tick_params(axis='x', labelrotation=30, labelsize=10)
+    axes[0, 0].grid(True, linestyle='--', alpha=0.6)
 
-        # 相关性热力图
-        corr_matrix = df[valid_metrics].corr()
-        im = axes[1, 0].imshow(corr_matrix, cmap='coolwarm', aspect='auto')
-        axes[1, 0].set_title('成分间相关性热力图')
-        axes[1, 0].set_xticks(range(len(valid_names)))
-        axes[1, 0].set_yticks(range(len(valid_names)))
-        axes[1, 0].set_xticklabels(valid_names, rotation=45)
-        axes[1, 0].set_yticklabels(valid_names)
+    colors = plt.cm.Pastel2(np.linspace(0, 1, len(valid_names)))
+    for patch, color in zip(box_plot['boxes'], colors):
+        patch.set_facecolor(color)
 
-        # 添加相关系数标注
-        for i in range(len(valid_names)):
-            for j in range(len(valid_names)):
-                axes[1, 0].text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
-                                ha='center', va='center')
+    # 2. 小提琴图 (Violin Plot)
+    try:
+        violin_parts = axes[0, 1].violinplot(box_data, showmeans=True)
+        axes[0, 1].set_title(labels["violin"] + title_prefix, fontsize=16)
+        axes[0, 1].set_xticks(np.arange(1, len(valid_names) + 1))
+        axes[0, 1].set_xticklabels(valid_names)
+        axes[0, 1].set_ylabel(labels["ylabel"], fontsize=12)
+        axes[0, 1].tick_params(axis='x', labelrotation=30, labelsize=10)
+        axes[0, 1].grid(True, linestyle='--', alpha=0.6)
+        for i, pc in enumerate(violin_parts['bodies']):
+            pc.set_facecolor(colors[i])
+            pc.set_alpha(0.7)
+    except Exception:
+        axes[0, 1].text(0.5, 0.5, 'Data not suitable\nfor Violin Plot', ha='center', va='center', fontsize=12)
+        axes[0, 1].set_title(labels["violin"] + title_prefix, fontsize=16)
 
-        plt.colorbar(im, ax=axes[1, 0])
+    # 3. 相关性热力图 (Correlation Heatmap)
+    if len(valid_metrics_cols) >= 2:
+        corr_matrix = df[valid_metrics_cols].corr()
+        # 重命名列以便显示
+        corr_matrix.columns = valid_names
+        corr_matrix.index = valid_names
 
-        # 质量-成分散点图
-        if len(valid_metrics) >= 2:
-            scatter = axes[1, 1].scatter(df[valid_metrics[0]], df[valid_metrics[1]],
-                                         c=df['Rubric_Score'], cmap='viridis', alpha=0.7)
-            axes[1, 1].set_xlabel(valid_names[0])
-            axes[1, 1].set_ylabel(valid_names[1])
-            axes[1, 1].set_title('双指标关系（颜色=质量评分）')
-            plt.colorbar(scatter, ax=axes[1, 1])
+        sns.heatmap(corr_matrix, ax=axes[1, 0], annot=True, cmap='coolwarm', fmt=".2f",
+                    linewidths=.5, annot_kws={"size": 10})
+        axes[1, 0].set_title(labels["corr"] + title_prefix, fontsize=16)
+        axes[1, 0].tick_params(axis='x', labelrotation=30, labelsize=10)
+        axes[1, 0].tick_params(axis='y', labelrotation=0, labelsize=10)
+    else:
+        axes[1, 0].text(0.5, 0.5, 'Need at least 2 metrics\nfor correlation', ha='center', va='center', fontsize=12)
+        axes[1, 0].set_title(labels["corr"] + title_prefix, fontsize=16)
 
-        plt.tight_layout()
-        st.pyplot(fig)
+    # 4. 质量-成分散点图 (Scatter Plot)
+    if len(valid_metrics_cols) >= 2 and 'Rubric_Score' in df.columns:
+        scatter = axes[1, 1].scatter(df[valid_metrics_cols[0]], df[valid_metrics_cols[1]],
+                                     c=df['Rubric_Score'], cmap='viridis',
+                                     s=60, alpha=0.7, edgecolors='black')
+        axes[1, 1].set_title(labels["scatter"] + title_prefix, fontsize=16)
+        axes[1, 1].set_xlabel(valid_names[0], fontsize=12)
+        axes[1, 1].set_ylabel(valid_names[1], fontsize=12)
+        cbar = plt.colorbar(scatter, ax=axes[1, 1])
+        cbar.set_label(labels["quality_score"], fontsize=12)
+        axes[1, 1].grid(True, linestyle='--', alpha=0.6)
+    else:
+        axes[1, 1].text(0.5, 0.5, 'Need at least 2 metrics\nand Quality Score', ha='center', va='center', fontsize=12)
+        axes[1, 1].set_title(labels["scatter"] + title_prefix, fontsize=16)
+
+    plt.tight_layout(pad=3.0)
+    st.pyplot(fig)
+    plt.close(fig)
 
 
 def create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount):
