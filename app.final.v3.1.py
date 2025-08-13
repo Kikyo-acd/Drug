@@ -4123,14 +4123,14 @@ def display_nsga2_results(solutions, values, selected_data, col_map, total_mix_a
         st.pyplot(fig)
         plt.close(fig)
 
-            # 添加雷达图说明
-            st.markdown("""
-            **雷达图说明：**
-            - **Low Deviation**: 低含量偏差（距离中心越远越好）
-            - **High Similarity**: 高相似度（距离中心越远越好）  
-            - **Few Batches**: 少批次数（距离中心越远越好）
-            - **面积越大**: 该方案的综合表现越好
-            """)
+        # 添加雷达图说明
+        st.markdown("""
+        **雷达图说明：**
+        - **Low Deviation**: 低含量偏差（距离中心越远越好）
+        - **High Similarity**: 高相似度（距离中心越远越好）  
+        - **Few Batches**: 少批次数（距离中心越远越好）
+        - **面积越大**: 该方案的综合表现越好
+        """)
 
     # --- 7. 添加成分达标情况分析 ---
     st.write("**成分含量达标分析**")
