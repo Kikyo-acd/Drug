@@ -295,7 +295,7 @@ import io
 
 # 替换原有的字体设置函数
 def setup_robust_chinese_fonts():
-    """强化的中文字体设置函数"""
+    """强化的中文字体设置函数 - 修复版"""
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
     import platform
@@ -305,12 +305,13 @@ def setup_robust_chinese_fonts():
     system = platform.system()
 
     if system == "Windows":
-        # Windows 系统字体路径
+        # Windows 系统字体路径 - 扩展列表
         font_candidates = [
-            ("Microsoft YaHei", ["msyh.ttc", "msyhbd.ttc"]),
+            ("Microsoft YaHei", ["msyh.ttc", "msyhbd.ttc", "msyh.ttf"]),
             ("SimHei", ["simhei.ttf"]),
             ("SimSun", ["simsun.ttc", "simsunb.ttf"]),
-            ("KaiTi", ["kaiti.ttf"])
+            ("KaiTi", ["kaiti.ttf"]),
+            ("FangSong", ["simfang.ttf"])
         ]
 
         font_dirs = [
@@ -352,6 +353,9 @@ def setup_robust_chinese_fonts():
                     font_path = os.path.join(font_dir, font_file)
                     if os.path.exists(font_path):
                         try:
+                            # 重新加载字体管理器
+                            fm.fontManager.__init__()
+                            
                             # 注册字体
                             fm.fontManager.addfont(font_path)
 
@@ -360,9 +364,16 @@ def setup_robust_chinese_fonts():
                             plt.rcParams['font.sans-serif'] = [font_name] + plt.rcParams['font.sans-serif']
                             plt.rcParams['axes.unicode_minus'] = False
 
-                            # 测试字体是否可用
-                            fig, ax = plt.subplots(figsize=(1, 1))
-                            ax.text(0.5, 0.5, '测试中文字体', fontfamily=font_name, fontsize=12)
+                            # 测试字体是否可用 - 更严格的测试
+                            fig, ax = plt.subplots(figsize=(2, 1))
+                            ax.text(0.5, 0.5, '测试中文字体显示效果', fontfamily=font_name, fontsize=12)
+                            ax.text(0.5, 0.2, '甘草苷 甘草酸 相似度', fontfamily=font_name, fontsize=10)
+                            
+                            # 尝试保存为字节流以测试渲染
+                            import io
+                            buf = io.BytesIO()
+                            fig.savefig(buf, format='png', bbox_inches='tight')
+                            buf.seek(0)
                             plt.close(fig)
 
                             found_font = font_name
@@ -370,9 +381,10 @@ def setup_robust_chinese_fonts():
                             return True, font_name
 
                         except Exception as e:
+                            st.warning(f"字体测试失败 {font_path}: {e}")
                             continue
 
-    # 如果系统字体都不可用，使用在线字体
+    # 如果系统字体都不可用，尝试在线字体
     if not found_font:
         return download_and_setup_online_font()
 
@@ -1066,21 +1078,31 @@ def show_precision_calculator(total_amount, precision_level):
     st.info(f"💡 在{precision_level}精度下，理论上最多可以使用{max_batches}个不同批次进行精确配比。")
 
 
-# 修改图表创建函数，增加字体检查
 def create_charts_with_chinese_fallback(df, col_map, drug_type):
-    """创建图表，自动检测中文字体可用性"""
-
-    # 首先尝试设置中文字体
+    """创建图表，自动检测中文字体可用性 - 修复版"""
+    st.subheader("📊 批次质量分析仪表板")
+    
+    # 先尝试强化的字体设置
     font_success, font_name = setup_robust_chinese_fonts()
-
+    
     if font_success:
-        # 使用中文版本
-        create_batch_quality_dashboard_chinese(df, col_map, drug_type)
-        create_ingredient_analysis_charts_chinese(df, col_map, drug_type)
-    else:
-        # 回退到英文版本
-        st.warning("⚠️ 中文字体不可用，使用英文标签显示图表")
-        create_charts_with_english_labels(df, col_map, drug_type)
+        st.success(f"✅ 成功加载中文字体: {font_name}")
+        try:
+            # 测试中文渲染
+            fig_test, ax_test = plt.subplots(figsize=(1, 1))
+            ax_test.text(0.5, 0.5, '测试中文显示', fontsize=12)
+            plt.close(fig_test)
+            
+            # 如果测试通过，使用中文版本
+            create_batch_quality_dashboard_chinese(df, col_map, drug_type)
+            create_ingredient_analysis_charts_chinese(df, col_map, drug_type)
+            return
+        except Exception as e:
+            st.warning(f"中文字体测试失败: {e}")
+    
+    # 如果中文字体不可用，使用英文版本
+    st.warning("⚠️ 中文字体不可用，使用英文标签显示图表")
+    create_charts_with_english_labels(df, col_map, drug_type)
 
 
 # 修改中文图表函数，增加字体验证
@@ -1122,11 +1144,124 @@ def create_batch_quality_dashboard_chinese_robust(df, col_map, drug_type):
     except Exception as e:
         st.error(f"图表显示失败: {e}")
         st.info("建议使用英文标签版本")
+def create_ingredient_analysis_charts_english(df, col_map, drug_type):
+    """创建成分分析图表 - 英文标签版本"""
+    st.subheader("🧪 Component Content Analysis")
+
+    if drug_type == '甘草':
+        # 甘草模式的详细分析
+        metrics = ['gg_g', 'ga_g', 'igs_mg', 'igg_mg', 'gs_mg']
+        metric_names = ['Glycyrrhizin', 'Glycyrrhizic Acid', 'Isoliquiritigenin', 'Isoliquiritin', 'Liquiritigenin']
+        chinese_names = ['甘草苷', '甘草酸', '异甘草素', '异甘草苷', '甘草素']
+    else:
+        # 通用模式分析
+        metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
+        metric_names = [f"Metric_{i+1}" for i in range(len(metrics))]
+        chinese_names = st.session_state.get('custom_metrics_info', [])
+
+    # 获取有效的指标
+    valid_metrics = []
+    valid_names = []
+    valid_chinese_names = []
+    
+    for i, (metric, name, chinese_name) in enumerate(zip(metrics, metric_names, chinese_names)):
+        col_name = col_map.get(metric)
+        if col_name and col_name in df.columns:
+            valid_metrics.append(col_name)
+            valid_names.append(name)
+            valid_chinese_names.append(chinese_name)
+
+    if valid_metrics:
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle('Component Content Analysis', fontsize=20, y=0.95)
+
+        # 1. 箱线图
+        box_data = [df[col].dropna() for col in valid_metrics]
+        if box_data:
+            box_plot = axes[0, 0].boxplot(box_data, labels=valid_names, patch_artist=True)
+            
+            # 美化箱线图
+            colors = plt.cm.Set3(np.linspace(0, 1, len(valid_names)))
+            for patch, color in zip(box_plot['boxes'], colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.7)
+
+            axes[0, 0].set_title('Content Distribution (Box Plot)', fontsize=16, pad=20)
+            axes[0, 0].set_xlabel('Component Indicators', fontsize=14)
+            axes[0, 0].set_ylabel('Content', fontsize=14)
+            axes[0, 0].tick_params(axis='x', rotation=45, labelsize=12)
+            axes[0, 0].grid(True, alpha=0.3)
+
+        # 2. 小提琴图
+        if len(valid_metrics) <= 6:  # 避免图表过于拥挤
+            positions = range(len(valid_metrics))
+            violin_parts = axes[0, 1].violinplot(box_data, positions, showmeans=True, showmedians=True)
+
+            # 美化小提琴图
+            for i, pc in enumerate(violin_parts['bodies']):
+                pc.set_facecolor(colors[i] if i < len(colors) else 'blue')
+                pc.set_alpha(0.7)
+
+            axes[0, 1].set_title('Content Distribution (Density Plot)', fontsize=16, pad=20)
+            axes[0, 1].set_xlabel('Component Indicators', fontsize=14)
+            axes[0, 1].set_ylabel('Content', fontsize=14)
+            axes[0, 1].set_xticks(positions)
+            axes[0, 1].set_xticklabels(valid_names, rotation=45, fontsize=12)
+            axes[0, 1].grid(True, alpha=0.3)
+
+        # 3. 相关性热力图
+        if len(valid_metrics) >= 2:
+            corr_matrix = df[valid_metrics].corr()
+            im = axes[1, 0].imshow(corr_matrix, cmap='RdYlBu_r', aspect='auto', vmin=-1, vmax=1)
+
+            # 设置标签
+            axes[1, 0].set_xticks(range(len(valid_names)))
+            axes[1, 0].set_yticks(range(len(valid_names)))
+            axes[1, 0].set_xticklabels(valid_names, rotation=45, fontsize=12)
+            axes[1, 0].set_yticklabels(valid_names, fontsize=12)
+
+            # 添加相关系数标注
+            for i in range(len(valid_names)):
+                for j in range(len(valid_names)):
+                    text = axes[1, 0].text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
+                                         ha='center', va='center', fontsize=10, fontweight='bold')
+
+            axes[1, 0].set_title('Component Correlation Heatmap', fontsize=16, pad=20)
+
+            # 添加颜色条
+            cbar = plt.colorbar(im, ax=axes[1, 0])
+            cbar.set_label('Correlation Coefficient', fontsize=12)
+
+        # 4. 质量-成分散点图
+        if len(valid_metrics) >= 2:
+            scatter = axes[1, 1].scatter(df[valid_metrics[0]], df[valid_metrics[1]],
+                                       c=df['Rubric_Score'], cmap='viridis',
+                                       s=80, alpha=0.7, edgecolors='black')
+            axes[1, 1].set_title('Component Relationship (Color=Quality Score)', fontsize=16, pad=20)
+            axes[1, 1].set_xlabel(valid_names[0], fontsize=14)
+            axes[1, 1].set_ylabel(valid_names[1], fontsize=14)
+            axes[1, 1].grid(True, alpha=0.3)
+
+            cbar = plt.colorbar(scatter, ax=axes[1, 1])
+            cbar.set_label('Quality Score', fontsize=12)
+
+        plt.tight_layout()
+        st.pyplot(fig)
+        
+        # 添加中英文对照说明
+        st.markdown("**Component Analysis Charts:**")
+        explanation_data = []
+        for eng, chi in zip(valid_names, valid_chinese_names):
+            explanation_data.append([eng, chi])
+        
+        if explanation_data:
+            explanation_df = pd.DataFrame(explanation_data, columns=['English Name', 'Chinese Name'])
+            st.dataframe(explanation_df, use_container_width=True, hide_index=True)
 
 
 # 修改主界面中的数据分析部分
 def update_analysis_dashboard():
-    """更新数据分析仪表板部分"""
+    """更新数据分析仪表板部分 - 修复版"""
     st.markdown("---")
     with st.expander("📊 查看总数据分析仪表板", expanded=False):
         analysis_method = st.radio(
@@ -1142,18 +1277,26 @@ def update_analysis_dashboard():
                                                     st.session_state.col_map,
                                                     st.session_state.drug_type)
             elif analysis_method == "英文标签":
+                # 修复：添加缺失的成分分析图表
                 create_charts_with_english_labels(st.session_state.df_processed,
                                                   st.session_state.col_map,
                                                   st.session_state.drug_type)
+                # 添加英文版成分分析
+                create_ingredient_analysis_charts_english(st.session_state.df_processed,
+                                                         st.session_state.col_map,
+                                                         st.session_state.drug_type)
             else:  # 强制中文标签
                 font_success, _ = setup_robust_chinese_fonts()
                 if font_success:
-                    create_batch_quality_dashboard_chinese_robust(st.session_state.df_processed,
-                                                                  st.session_state.col_map,
-                                                                  st.session_state.drug_type)
+                    create_batch_quality_dashboard_chinese(st.session_state.df_processed,
+                                                          st.session_state.col_map,
+                                                          st.session_state.drug_type)
+                    # 修复：添加缺失的成分分析图表
+                    create_ingredient_analysis_charts_chinese(st.session_state.df_processed,
+                                                             st.session_state.col_map,
+                                                             st.session_state.drug_type)
                 else:
                     st.error("❌ 无法加载中文字体，请选择其他显示方式")
-
 
 # 添加字体诊断功能
 def diagnose_font_issues():
@@ -1353,6 +1496,11 @@ def create_charts_with_english_labels(df, col_map, drug_type):
     """)
 
     st.pyplot(fig)
+    # 在create_charts_with_english_labels函数的最后添加这一行
+    plt.close(fig)
+
+    # 然后调用成分分析图表
+    create_ingredient_analysis_charts_english(df, col_map, drug_type)
 
 
 # --- 核心库导入 ---
@@ -6482,6 +6630,7 @@ elif st.session_state.app_state == 'ANALYSIS_READY':
         create_export_functionality()
 
     render_chat_interface()
+
 
 
 
