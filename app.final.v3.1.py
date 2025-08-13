@@ -3782,223 +3782,6 @@ def create_ingredient_analysis_charts(df, col_map, drug_type, use_chinese=True):
     plt.close(fig)
 
 
-def create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount):
-    """优化结果可视化 - 英文标签大字体版本"""
-    st.subheader("🎯 优化结果详细分析")
-
-    # 计算各指标的混合后值
-    optimal_proportions = result.x
-    used_batches = optimal_proportions > 0.001
-
-    fig, axes = plt.subplots(2, 3, figsize=(20, 14))
-    fig.suptitle('Optimization Results Analysis', fontsize=26, y=0.95)
-
-    # 1. 批次使用比例饼图
-    used_indices = np.where(used_batches)[0]
-    used_props = optimal_proportions[used_indices]
-    used_labels = [f"Batch_{selected_data.index[i]}" for i in used_indices]
-
-    # 只显示前8个最大的批次，其他合并为"其他"
-    if len(used_indices) > 8:
-        sorted_indices = np.argsort(used_props)[::-1]
-        top_8_props = used_props[sorted_indices[:8]]
-        top_8_labels = [used_labels[i] for i in sorted_indices[:8]]
-        other_prop = np.sum(used_props[sorted_indices[8:]])
-
-        if other_prop > 0:
-            top_8_props = np.append(top_8_props, other_prop)
-            top_8_labels.append("Others")
-
-        pie_props = top_8_props
-        pie_labels = top_8_labels
-    else:
-        pie_props = used_props
-        pie_labels = used_labels
-
-    wedges, texts, autotexts = axes[0, 0].pie(pie_props, labels=pie_labels, autopct='%1.1f%%',
-                                              startangle=90, textprops={'fontsize': 14})
-    axes[0, 0].set_title('Batch Usage Proportion', fontsize=20, pad=20)
-
-    # 2. 批次贡献度分析（柱状图）
-    batch_weights = optimal_proportions * total_mix_amount
-    significant_batches = batch_weights > 1
-    sig_weights = batch_weights[significant_batches]
-    sig_labels = [f"Batch_{selected_data.index[i]}" for i in np.where(significant_batches)[0]]
-
-    colors = plt.cm.Set3(np.linspace(0, 1, len(sig_weights)))
-    bars = axes[0, 1].bar(range(len(sig_weights)), sig_weights, color=colors,
-                          alpha=0.8, edgecolor='black', linewidth=1.5)
-    axes[0, 1].set_title('Batch Weight Distribution', fontsize=20, pad=20)
-    axes[0, 1].set_xlabel('Batch Index', fontsize=18)
-    axes[0, 1].set_ylabel('Weight (grams)', fontsize=18)
-    axes[0, 1].tick_params(axis='both', which='major', labelsize=16)
-    axes[0, 1].grid(True, alpha=0.3)
-
-    # 简化x轴标签显示
-    if len(sig_labels) <= 10:
-        axes[0, 1].set_xticks(range(len(sig_labels)))
-        axes[0, 1].set_xticklabels([f"B{i + 1}" for i in range(len(sig_labels))], rotation=0)
-    else:
-        # 如果批次太多，只显示部分标签
-        step = max(1, len(sig_labels) // 10)
-        axes[0, 1].set_xticks(range(0, len(sig_labels), step))
-        axes[0, 1].set_xticklabels([f"B{i + 1}" for i in range(0, len(sig_labels), step)])
-
-    # 添加数值标注
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        if height > max(sig_weights) * 0.05:  # 只标注较大的值
-            axes[0, 1].text(bar.get_x() + bar.get_width() / 2., height + max(sig_weights) * 0.01,
-                            f'{height:.1f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
-
-    # 3. 成分达标情况对比
-    if drug_type == '甘草':
-        target_metrics = ['gg_g', 'ga_g']
-        standards = [4.5, 18]
-        labels = ['Glycyrrhizin', 'Glycyrrhizic Acid']
-    else:
-        target_metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
-        standards = [st.session_state.custom_constraints.get(m, 0) for m in target_metrics]
-        labels = [f"Metric_{i + 1}" for i in range(len(target_metrics))]
-
-    actual_values = []
-    valid_standards = []
-    valid_labels = []
-
-    for i, metric in enumerate(target_metrics):
-        col_name = col_map.get(metric)
-        if col_name and col_name in selected_data.columns and i < len(standards):
-            actual_val = np.dot(optimal_proportions, selected_data[col_name].values)
-            actual_values.append(actual_val)
-            valid_standards.append(standards[i])
-            valid_labels.append(labels[i] if i < len(labels) else f"Metric_{i + 1}")
-
-    if actual_values and valid_standards:
-        x_pos = np.arange(len(valid_labels))
-        width = 0.35
-
-        bars1 = axes[0, 2].bar(x_pos - width / 2, valid_standards, width,
-                               label='Minimum Standard', alpha=0.8, color='orange', edgecolor='black')
-        bars2 = axes[0, 2].bar(x_pos + width / 2, actual_values, width,
-                               label='Actual Achieved', alpha=0.8, color='green', edgecolor='black')
-
-        axes[0, 2].set_title('Standard vs Actual Achievement', fontsize=20, pad=20)
-        axes[0, 2].set_xlabel('Component Indicators', fontsize=18)
-        axes[0, 2].set_ylabel('Content', fontsize=18)
-        axes[0, 2].set_xticks(x_pos)
-        axes[0, 2].set_xticklabels(valid_labels, fontsize=16)
-        axes[0, 2].legend(fontsize=16)
-        axes[0, 2].tick_params(axis='both', which='major', labelsize=16)
-        axes[0, 2].grid(True, alpha=0.3)
-
-        # 添加数值标注
-        for bars in [bars1, bars2]:
-            for bar in bars:
-                height = bar.get_height()
-                axes[0, 2].text(bar.get_x() + bar.get_width() / 2.,
-                                height + max(max(valid_standards), max(actual_values)) * 0.01,
-                                f'{height:.2f}', ha='center', va='bottom', fontsize=14, fontweight='bold')
-
-    # 4. 批次质量分布对比
-    all_scores = selected_data['Rubric_Score']
-    used_scores = selected_data.iloc[used_indices]['Rubric_Score']
-
-    axes[1, 0].hist(all_scores, bins=15, alpha=0.6, color='lightblue',
-                    label='All Selected Batches', edgecolor='black', linewidth=1.5)
-    axes[1, 0].hist(used_scores, bins=15, alpha=0.8, color='red',
-                    label='Actually Used Batches', edgecolor='black', linewidth=1.5)
-    axes[1, 0].set_title('Quality Score Distribution Comparison', fontsize=20, pad=20)
-    axes[1, 0].set_xlabel('Quality Score', fontsize=18)
-    axes[1, 0].set_ylabel('Number of Batches', fontsize=18)
-    axes[1, 0].legend(fontsize=16)
-    axes[1, 0].tick_params(axis='both', which='major', labelsize=16)
-    axes[1, 0].grid(True, alpha=0.3)
-
-    # 5. 成本效益分析
-    cost_col = col_map.get('cost', '模拟成本')
-    if cost_col in selected_data.columns:
-        total_cost = np.dot(optimal_proportions, selected_data[cost_col].values) * total_mix_amount
-        avg_quality = np.dot(optimal_proportions, selected_data['Rubric_Score'].values)
-
-        # 所有批次的散点
-        axes[1, 1].scatter(selected_data[cost_col], selected_data['Rubric_Score'],
-                           alpha=0.5, s=80, color='lightgray', label='All Batches',
-                           edgecolors='black', linewidth=1)
-        # 使用批次的散点
-        axes[1, 1].scatter(selected_data.iloc[used_indices][cost_col], used_scores,
-                           color='red', s=120, label='Used Batches',
-                           edgecolors='black', alpha=0.8, linewidth=1.5)
-
-        axes[1, 1].set_title('Cost-Quality Efficiency Analysis', fontsize=20, pad=20)
-        axes[1, 1].set_xlabel('Unit Cost (Yuan/gram)', fontsize=18)
-        axes[1, 1].set_ylabel('Quality Score', fontsize=18)
-        axes[1, 1].legend(fontsize=16)
-        axes[1, 1].tick_params(axis='both', which='major', labelsize=16)
-        axes[1, 1].grid(True, alpha=0.3)
-
-        # 添加成本效益信息文本框
-        info_text = f'Total Cost: {total_cost:.2f} Yuan\nAvg Quality: {avg_quality:.3f}'
-        axes[1, 1].text(0.05, 0.95, info_text, transform=axes[1, 1].transAxes,
-                        bbox=dict(boxstyle="round,pad=0.5", facecolor='wheat', alpha=0.8),
-                        fontsize=16, verticalalignment='top', fontweight='bold')
-
-    # 6. 库存使用情况
-    inventory = selected_data['库存量 (克)'].fillna(total_mix_amount * 10)
-    usage_ratio = (optimal_proportions * total_mix_amount) / inventory
-    usage_ratio = np.clip(usage_ratio, 0, 1) * 100
-
-    # 只显示实际使用的批次
-    used_usage = usage_ratio[used_batches]
-    used_batch_labels = [f"Batch_{selected_data.index[i]}" for i in used_indices]
-
-    # 根据使用率设置颜色
-    colors = ['green' if x < 50 else 'orange' if x < 80 else 'red' for x in used_usage]
-    bars = axes[1, 2].bar(range(len(used_usage)), used_usage, color=colors,
-                          alpha=0.8, edgecolor='black', linewidth=1.5)
-
-    axes[1, 2].set_title('Inventory Usage by Batch', fontsize=20, pad=20)
-    axes[1, 2].set_xlabel('Batch Index', fontsize=18)
-    axes[1, 2].set_ylabel('Inventory Usage Rate (%)', fontsize=18)
-    axes[1, 2].tick_params(axis='both', which='major', labelsize=16)
-    axes[1, 2].grid(True, alpha=0.3)
-
-    # 简化x轴标签
-    if len(used_batch_labels) <= 10:
-        axes[1, 2].set_xticks(range(len(used_batch_labels)))
-        axes[1, 2].set_xticklabels([f"B{i + 1}" for i in range(len(used_batch_labels))], rotation=0)
-    else:
-        step = max(1, len(used_batch_labels) // 10)
-        axes[1, 2].set_xticks(range(0, len(used_batch_labels), step))
-        axes[1, 2].set_xticklabels([f"B{i + 1}" for i in range(0, len(used_batch_labels), step)])
-
-    axes[1, 2].axhline(y=80, color='red', linestyle='--', alpha=0.7,
-                       linewidth=3, label='High Usage Warning Line')
-    axes[1, 2].legend(fontsize=16)
-
-    # 添加使用率标注
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        if height > 10:  # 只标注大于10%的
-            axes[1, 2].text(bar.get_x() + bar.get_width() / 2., height + 2,
-                            f'{height:.1f}%', ha='center', va='bottom',
-                            fontsize=12, fontweight='bold')
-
-    plt.tight_layout()
-
-    # 添加中文说明
-    st.markdown("""
-    **优化结果图表说明：**
-    - **Batch Usage Proportion**: 批次使用比例分布
-    - **Batch Weight Distribution**: 各批次用量分布  
-    - **Standard vs Actual Achievement**: 标准要求 vs 实际达成情况
-    - **Quality Score Distribution Comparison**: 质量评分分布对比（所有批次 vs 实际使用批次）
-    - **Cost-Quality Efficiency Analysis**: 成本效益分析
-    - **Inventory Usage by Batch**: 各批次库存使用情况
-    """)
-
-    st.pyplot(fig)
-
-
 # 在数据分析部分：
 def show_data_analysis_dashboard():
     """显示数据分析仪表板"""
@@ -4670,33 +4453,162 @@ def create_optimization_visualization_english(result, selected_data, col_map, dr
     st.pyplot(fig)
 
 
+def create_optimization_visualization_chinese(result, selected_data, col_map, drug_type, total_mix_amount):
+    """优化结果可视化 - 中文标签大字体版本"""
+    st.subheader("🎯 优化结果详细分析")
+
+    optimal_proportions = result.x
+    used_batches = optimal_proportions > 0.001
+
+    fig, axes = plt.subplots(2, 3, figsize=(20, 14))
+    fig.suptitle('优化结果详细分析', fontsize=26, y=0.95)
+
+    # 1. 批次使用比例饼图
+    used_indices = np.where(used_batches)[0]
+    used_props = optimal_proportions[used_indices]
+    used_labels = [f"批次_{selected_data.index[i]}" for i in used_indices]
+
+    if len(used_indices) > 8:
+        sorted_indices = np.argsort(used_props)[::-1]
+        top_8_props = used_props[sorted_indices[:8]]
+        top_8_labels = [used_labels[i] for i in sorted_indices[:8]]
+        other_prop = np.sum(used_props[sorted_indices[8:]])
+        if other_prop > 0:
+            top_8_props = np.append(top_8_props, other_prop)
+            top_8_labels.append("其他")
+        pie_props, pie_labels = top_8_props, top_8_labels
+    else:
+        pie_props, pie_labels = used_props, used_labels
+
+    axes[0, 0].pie(pie_props, labels=pie_labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 14})
+    axes[0, 0].set_title('批次使用比例', fontsize=20, pad=20)
+
+    # 2. 批次用量分布柱状图
+    batch_weights = optimal_proportions * total_mix_amount
+    significant_batches = batch_weights > 1
+    sig_weights = batch_weights[significant_batches]
+    sig_labels = [f"批次_{selected_data.index[i]}" for i in np.where(significant_batches)[0]]
+
+    colors = plt.cm.Set3(np.linspace(0, 1, len(sig_weights)))
+    bars = axes[0, 1].bar(range(len(sig_weights)), sig_weights, color=colors, alpha=0.8, edgecolor='black',
+                          linewidth=1.5)
+    axes[0, 1].set_title('各批次用量分布', fontsize=20, pad=20)
+    axes[0, 1].set_xlabel('批次', fontsize=18)
+    axes[0, 1].set_ylabel('用量 (克)', fontsize=18)
+    axes[0, 1].tick_params(axis='both', which='major', labelsize=16)
+    axes[0, 1].grid(True, alpha=0.3)
+
+    # 3. 成分达标情况对比
+    if drug_type == '甘草':
+        target_metrics = ['gg_g', 'ga_g']
+        standards = [4.5, 18]
+        labels = ['甘草苷', '甘草酸']
+    else:
+        target_metrics = [f"metric_{i}" for i in range(len(st.session_state.get('custom_metrics_info', [])))]
+        standards = [st.session_state.custom_constraints.get(m, 0) for m in target_metrics]
+        labels = st.session_state.get('custom_metrics_info', [])
+
+    actual_values, valid_standards, valid_labels = [], [], []
+    for i, metric in enumerate(target_metrics):
+        col_name = col_map.get(metric)
+        if col_name and col_name in selected_data.columns and i < len(standards):
+            actual_val = np.dot(optimal_proportions, selected_data[col_name].values)
+            actual_values.append(actual_val)
+            valid_standards.append(standards[i])
+            valid_labels.append(labels[i])
+
+    if actual_values:
+        x_pos = np.arange(len(valid_labels))
+        width = 0.35
+        bars1 = axes[0, 2].bar(x_pos - width / 2, valid_standards, width, label='最低标准', alpha=0.8, color='orange',
+                               edgecolor='black')
+        bars2 = axes[0, 2].bar(x_pos + width / 2, actual_values, width, label='实际达成', alpha=0.8, color='green',
+                               edgecolor='black')
+        axes[0, 2].set_title('标准 vs 实际达成情况', fontsize=20, pad=20)
+        axes[0, 2].set_xlabel('成分指标', fontsize=18)
+        axes[0, 2].set_ylabel('含量', fontsize=18)
+        axes[0, 2].set_xticks(x_pos)
+        axes[0, 2].set_xticklabels(valid_labels, fontsize=16, rotation=30)
+        axes[0, 2].legend(fontsize=16)
+        axes[0, 2].tick_params(axis='both', which='major', labelsize=16)
+        axes[0, 2].grid(True, alpha=0.3)
+
+    # 4. 批次质量分布对比
+    all_scores = selected_data['Rubric_Score']
+    used_scores = selected_data.iloc[used_indices]['Rubric_Score']
+    axes[1, 0].hist(all_scores, bins=15, alpha=0.6, color='lightblue', label='所有已选批次', edgecolor='black',
+                    linewidth=1.5)
+    axes[1, 0].hist(used_scores, bins=15, alpha=0.8, color='red', label='实际使用批次', edgecolor='black',
+                    linewidth=1.5)
+    axes[1, 0].set_title('质量评分分布对比', fontsize=20, pad=20)
+    axes[1, 0].set_xlabel('质量评分', fontsize=18)
+    axes[1, 0].set_ylabel('批次数量', fontsize=18)
+    axes[1, 0].legend(fontsize=16)
+    axes[1, 0].tick_params(axis='both', which='major', labelsize=16)
+    axes[1, 0].grid(True, alpha=0.3)
+
+    # 5. 成本效益分析
+    cost_col = col_map.get('cost', '模拟成本')
+    if cost_col in selected_data.columns:
+        total_cost = np.dot(optimal_proportions, selected_data[cost_col].values) * total_mix_amount
+        avg_quality = np.dot(optimal_proportions, selected_data['Rubric_Score'].values)
+        axes[1, 1].scatter(selected_data[cost_col], selected_data['Rubric_Score'], alpha=0.5, s=80, color='lightgray',
+                           label='所有批次', edgecolors='black', linewidth=1)
+        axes[1, 1].scatter(selected_data.iloc[used_indices][cost_col], used_scores, color='red', s=120,
+                           label='使用批次', edgecolors='black', alpha=0.8, linewidth=1.5)
+        axes[1, 1].set_title('成本效益分析', fontsize=20, pad=20)
+        axes[1, 1].set_xlabel('单位成本 (元/克)', fontsize=18)
+        axes[1, 1].set_ylabel('质量评分', fontsize=18)
+        axes[1, 1].legend(fontsize=16)
+        axes[1, 1].tick_params(axis='both', which='major', labelsize=16)
+        axes[1, 1].grid(True, alpha=0.3)
+        info_text = f'总成本: {total_cost:.2f} 元\n平均质量: {avg_quality:.3f}'
+        axes[1, 1].text(0.05, 0.95, info_text, transform=axes[1, 1].transAxes,
+                        bbox=dict(boxstyle="round,pad=0.5", facecolor='wheat', alpha=0.8), fontsize=16,
+                        verticalalignment='top', fontweight='bold')
+
+    # 6. 库存使用情况
+    inventory = selected_data['库存量 (克)'].fillna(total_mix_amount * 10)
+    usage_ratio = (optimal_proportions * total_mix_amount) / inventory
+    usage_ratio = np.clip(usage_ratio, 0, 1) * 100
+    used_usage = usage_ratio[used_batches]
+    used_batch_labels = [f"批次_{selected_data.index[i]}" for i in used_indices]
+    colors = ['green' if x < 50 else 'orange' if x < 80 else 'red' for x in used_usage]
+    axes[1, 2].bar(range(len(used_usage)), used_usage, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+    axes[1, 2].set_title('各批次库存使用情况', fontsize=20, pad=20)
+    axes[1, 2].set_xlabel('批次', fontsize=18)
+    axes[1, 2].set_ylabel('库存使用率 (%)', fontsize=18)
+    axes[1, 2].tick_params(axis='both', which='major', labelsize=16)
+    axes[1, 2].grid(True, alpha=0.3)
+    axes[1, 2].axhline(y=80, color='red', linestyle='--', alpha=0.7, linewidth=3, label='高使用率预警线')
+    axes[1, 2].legend(fontsize=16)
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+
 def display_successful_result_universal_enhanced(result, selected_data, total_mix_amount, col_map,
                                                  constraints_dict,
                                                  fingerprint_options, drug_type, target_contents=None):
-    """增强版结果显示函数，使用英文标签（已修复中文方块问题）"""
+    """增强版结果显示函数，使用中文标签"""
     st.subheader("★ 智能混批推荐方案 ★", anchor=False)
     st.success("成功找到最优混合方案！", icon="🎉")
 
-    # --- 基础信息展示部分保持不变 ---
+    # --- 基础信息展示 ---
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.session_state.current_mode == "成本最优":
             st.metric("预期总成本 (元)", f"{(result.fun * total_mix_amount):.2f}")
         else:
-            if drug_type == '甘草':
-                ml_score = -result.fun
-                st.metric("预期最高ML Score (1-10分)", f"{ml_score:.2f}")
-            else:
-                quality_score = -result.fun
-                st.metric("预期质量评分", f"{quality_score:.4f}")
+            score_label = "预期最高ML Score (1-10分)" if drug_type == '甘草' else "预期质量评分"
+            score_value = -result.fun
+            st.metric(score_label, f"{score_value:.2f}")
     with col2:
-        used_batches_count = len(np.where(result.x > 0.001)[0])
-        st.metric("实际使用批次数", used_batches_count)
+        st.metric("实际使用批次数", len(np.where(result.x > 0.001)[0]))
     with col3:
-        total_inventory_used = np.sum(result.x * total_mix_amount)
-        st.metric("总原料用量 (克)", f"{total_inventory_used:.2f}")
+        st.metric("总原料用量 (克)", f"{np.sum(result.x * total_mix_amount):.2f}")
 
-    # --- 详细配比表格部分保持不变 ---
+    # --- 详细配比表格 ---
     st.subheader("📋 详细配比方案")
     optimal_weights = result.x * total_mix_amount
     recommendation_df = pd.DataFrame({
@@ -4705,13 +4617,12 @@ def display_successful_result_universal_enhanced(result, selected_data, total_mi
         '使用比例 (%)': result.x * 100,
         '质量评分': selected_data['Rubric_Score']
     })
-    significant_batches = recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01]
-    st.dataframe(significant_batches.round(2), use_container_width=True)
+    st.dataframe(recommendation_df[recommendation_df['推荐用量 (克)'] > 0.01].round(2), use_container_width=True)
 
-    # --- 可视化函数调用保持不变 ---
-    create_optimization_visualization_english(result, selected_data, col_map, drug_type, total_mix_amount)
+    # --- 调用中文可视化函数 ---
+    create_optimization_visualization_chinese(result, selected_data, col_map, drug_type, total_mix_amount)
 
-    # --- 约束达标情况分析（包含修正） ---
+    # --- 约束达标情况分析 ---
     st.subheader("✅ 约束指标达标情况")
     status_data = []
     for key, min_val in constraints_dict.items():
@@ -4719,189 +4630,22 @@ def display_successful_result_universal_enhanced(result, selected_data, total_mi
         if col_name and col_name in selected_data.columns:
             final_val = np.dot(result.x, selected_data[col_name].values)
             status = "✓" if final_val >= min_val else "✗"
-            if drug_type == '甘草':
-                display_name = col_name
-            else:
-                if key.startswith('metric_'):
-                    metric_index = int(key.split('_')[1])
-                    display_name = st.session_state.custom_metrics_info[metric_index] if metric_index < len(
-                        st.session_state.custom_metrics_info) else col_name
-                else:
-                    display_name = col_name
+            display_name = st.session_state.custom_metrics_info[int(key.split('_')[1])] if drug_type != '甘草' and key.startswith('metric_') else col_name
             status_data.append([display_name, f"{final_val:.4f}", f"≥ {min_val}", status])
-
-    if status_data:
-        # --- 图表绘制部分（已修正）---
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-
-        # 饼图部分（不变）
-        passed_count = sum([1 for row in status_data if row[3] == "✓"])
-        failed_count = len(status_data) - passed_count
-        colors = ['green', 'red'] if failed_count > 0 else ['green']
-        sizes = [passed_count, failed_count] if failed_count > 0 else [passed_count]
-        labels = ['Passed', 'Failed'] if failed_count > 0 else ['All Passed']
-        ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', textprops={'fontsize': 16}, startangle=90)
-        ax1.set_title('Constraint Compliance Rate', fontsize=20, pad=20)
-
-        # 柱状图部分（已修正）
-        chinese_names = [row[0] for row in status_data]
-        actual_vals = [float(row[1]) for row in status_data]
-        required_vals = [float(row[2].split('≥')[1].strip()) for row in status_data]
-
-        # ******** 新增的翻译逻辑 ********
-        english_names = []
-        for name in chinese_names:
-            if '甘草酸' in name:
-                english_names.append('Glycyrrhizic Acid')
-            elif '甘草苷' in name:
-                english_names.append('Glycyrrhizin')
-            elif '相似度' in name:
-                english_names.append('Similarity')
-            elif '指标' in name and any(char.isdigit() for char in name):
-                num = ''.join(filter(str.isdigit, name))
-                english_names.append(f'Metric {num}')
-            else:
-                english_names.append(name)  # Fallback
-
-        x = np.arange(len(english_names))
-        width = 0.35
-        bars1 = ax2.bar(x - width / 2, required_vals, width, label='Required', alpha=0.8, color='orange',
-                        edgecolor='black')
-        bars2 = ax2.bar(x + width / 2, actual_vals, width, label='Actual', alpha=0.8, color='green', edgecolor='black')
-        ax2.set_xlabel('Indicators', fontsize=18)
-        ax2.set_ylabel('Values', fontsize=18)
-        ax2.set_title('Required vs Actual Values', fontsize=20, pad=20)
-        ax2.set_xticks(x)
-        # ******** 使用翻译后的英文标签 ********
-        ax2.set_xticklabels(english_names, rotation=45, ha="right", fontsize=14)
-        ax2.legend(fontsize=16)
-        ax2.tick_params(axis='both', which='major', labelsize=16)
-        ax2.grid(True, alpha=0.3)
-        fig.tight_layout()  # 调整布局防止标签被截断
-        st.pyplot(fig)
-
     st.table(pd.DataFrame(status_data, columns=['指标名称', '预期值', '标准要求', '是否达标']))
 
-    # --- 目标达成情况可视化（包含修正） ---
+    # --- 目标达成情况分析 ---
     if target_contents:
         st.subheader("🎯 目标含量达成情况")
         target_data = []
-        target_names_chinese = []
-        actual_values = []
-        target_values = []
-        deviations = []
         for key, target_val in target_contents.items():
             col_name = col_map.get(key)
             if col_name and col_name in selected_data.columns:
                 final_val = np.dot(result.x, selected_data[col_name].values)
-                deviation = abs(final_val - target_val)
-                deviation_percent = (deviation / target_val) * 100 if target_val != 0 else 0
-                if drug_type == '甘草':
-                    display_name = col_name
-                else:
-                    if key.startswith('metric_'):
-                        metric_index = int(key.split('_')[1])
-                        display_name = st.session_state.custom_metrics_info[metric_index] if metric_index < len(
-                            st.session_state.custom_metrics_info) else col_name
-                    else:
-                        display_name = col_name
+                deviation_percent = abs(final_val - target_val) / target_val * 100 if target_val != 0 else 0
+                display_name = st.session_state.custom_metrics_info[int(key.split('_')[1])] if drug_type != '甘草' and key.startswith('metric_') else col_name
                 target_data.append([display_name, f"{final_val:.4f}", f"{target_val:.4f}", f"{deviation_percent:.2f}%"])
-                target_names_chinese.append(display_name)
-                actual_values.append(final_val)
-                target_values.append(target_val)
-                deviations.append(deviation_percent)
-
-        if target_names_chinese:
-            # ******** 新增的翻译逻辑 ********
-            target_names_english = []
-            for name in target_names_chinese:
-                if '甘草酸' in name:
-                    target_names_english.append('Glycyrrhizic Acid')
-                elif '甘草苷' in name:
-                    target_names_english.append('Glycyrrhizin')
-                elif '指标' in name and any(char.isdigit() for char in name):
-                    num = ''.join(filter(str.isdigit, name))
-                    target_names_english.append(f'Metric {num}')
-                else:
-                    target_names_english.append(name)
-
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-            x = np.arange(len(target_names_english))
-            width = 0.35
-            ax1.bar(x - width / 2, target_values, width, label='Target', alpha=0.8, color='blue', edgecolor='black')
-            ax1.bar(x + width / 2, actual_values, width, label='Actual', alpha=0.8, color='green', edgecolor='black')
-            ax1.set_xlabel('Indicators', fontsize=18)
-            ax1.set_ylabel('Content', fontsize=18)
-            ax1.set_title('Target vs Actual Values', fontsize=20, pad=20)
-            ax1.set_xticks(x)
-            # ******** 使用翻译后的英文标签 ********
-            ax1.set_xticklabels(target_names_english, rotation=45, ha="right", fontsize=16)
-            ax1.legend(fontsize=16)
-            ax1.tick_params(axis='both', which='major', labelsize=16)
-            ax1.grid(True, alpha=0.3)
-
-            colors = ['green' if d < 5 else 'orange' if d < 10 else 'red' for d in deviations]
-            # ******** 使用翻译后的英文标签 ********
-            bars = ax2.bar(target_names_english, deviations, color=colors, alpha=0.8, edgecolor='black')
-            ax2.set_xlabel('Indicators', fontsize=18)
-            ax2.set_ylabel('Deviation (%)', fontsize=18)
-            ax2.set_title('Target Achievement Deviation', fontsize=20, pad=20)
-            ax2.axhline(y=5, color='green', linestyle='--', alpha=0.7, linewidth=2, label='Excellent (<5%)')
-            ax2.axhline(y=10, color='orange', linestyle='--', alpha=0.7, linewidth=2, label='Good (<10%)')
-            ax2.tick_params(axis='both', which='major', labelsize=16)
-            ax2.grid(True, alpha=0.3)
-            ax2.legend(fontsize=16)
-
-            # 自动旋转x轴标签以避免重叠
-            for label in ax2.get_xticklabels():
-                label.set_rotation(45)
-                label.set_ha('right')
-
-            fig.tight_layout()
-            st.pyplot(fig)
-
         st.table(pd.DataFrame(target_data, columns=['指标名称', '实际值', '目标值', '偏差百分比']))
-
-    # 指纹图谱结果（如果启用）
-    if fingerprint_options['enabled'] and fingerprint_options['target_profile'] is not None:
-        mix_f_profile = np.dot(result.x, selected_data[fingerprint_options['f_cols']].values)
-        final_sim = cosine_similarity(mix_f_profile.reshape(1, -1),
-                                      fingerprint_options['target_profile'].reshape(1, -1))[0, 0]
-        status = "✓" if final_sim >= fingerprint_options['min_similarity'] else "✗"
-
-        st.subheader("🔬 指纹图谱匹配分析")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("相似度得分", f"{final_sim:.4f}")
-            st.metric("要求标准", f"≥ {fingerprint_options['min_similarity']}")
-            if status == "✓":
-                st.success("✅ 指纹图谱匹配成功")
-            else:
-                st.error("❌ 指纹图谱匹配失败")
-
-        with col2:
-            # 指纹图谱对比图（英文版）
-            fig, ax = plt.subplots(figsize=(12, 8))
-            feature_cols = fingerprint_options['f_cols']
-            x_pos = range(len(feature_cols))
-
-            ax.plot(x_pos, fingerprint_options['target_profile'], 'o-',
-                    label='Target Profile', linewidth=3, markersize=10, color='blue')
-            ax.plot(x_pos, mix_f_profile, 's-',
-                    label='Mixed Profile', linewidth=3, markersize=10, color='red')
-
-            ax.set_xlabel('Fingerprint Features', fontsize=18)
-            ax.set_ylabel('Feature Values', fontsize=18)
-            ax.set_title('Fingerprint Profile Comparison', fontsize=20, pad=20)
-            ax.set_xticks(x_pos)
-            ax.set_xticklabels([f'F{i + 1}' for i in range(len(feature_cols))], fontsize=16)
-            ax.legend(fontsize=16)
-            ax.grid(True, alpha=0.3)
-            ax.tick_params(axis='both', which='major', labelsize=16)
-
-            plt.tight_layout()
-            st.pyplot(fig)
-
 
 def run_hybrid_optimization_universal(selected_data, total_mix_amount, col_map, constraints_dict, fingerprint_options,
                                       drug_type, target_contents=None):
