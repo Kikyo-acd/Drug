@@ -2294,8 +2294,35 @@ def generate_docx_report():
         st.error("❌ 请先成功运行一次优化计算，再生成报告。")
         return
 
-    result = st.session_state.optimization_result['result']
-    selected_data = st.session_state.optimization_result['selected_data']
+
+    result_container = st.session_state.optimization_result
+    result = result_container.get('result')
+    selected_data = result_container.get('selected_data')
+
+    if not result or selected_data is None:
+        st.error("❌ 报告生成失败：优化结果数据不完整。")
+        return
+
+    # --- 关键修复：统一访问方式 ---
+    # 无论result是对象还是字典，都提取出 fun_value 和 x_values
+    fun_value = None
+    x_values = np.array([])
+
+    if isinstance(result, dict):
+        # 处理来自 NSGA-II 的字典格式结果
+        fun_value = result.get('fun')
+        x_values = result.get('x', np.array([]))
+    else:
+        # 处理来自 SLSQP 的对象格式结果
+        if hasattr(result, 'fun'):
+            fun_value = result.fun
+        if hasattr(result, 'x'):
+            x_values = result.x
+
+    # 检查提取是否成功
+    if fun_value is None or x_values.size == 0:
+        st.error("❌ 报告生成失败：无法从优化结果中提取有效评分或配比。")
+        return
 
     with st.spinner('📄 正在生成Word报告... (AI分析可能需要一些时间)'):
         try:
@@ -2355,68 +2382,67 @@ def generate_docx_report():
             
             # 4. 推荐配方表格
             doc.add_heading('三、推荐混合配方', level=1)
-            
-            if result and 'x' in result and hasattr(result, 'x'):
-                # 创建配方数据
-                used_batches = result['x'] > 0.001
-                if np.any(used_batches):
-                    recipe_data = selected_data[used_batches].copy()
-                    proportions = result['x'][used_batches]
-                    weights = proportions * st.session_state.total_mix_amount
-                    
-                    # 创建表格
-                    table = doc.add_table(rows=1, cols=4)
-                    table.style = 'Table Grid'
-                    
-                    # 表头
-                    hdr_cells = table.rows[0].cells
-                    hdr_cells[0].text = '批次编号'
-                    hdr_cells[1].text = '推荐用量(克)'
-                    hdr_cells[2].text = '混合比例(%)'
-                    hdr_cells[3].text = '质量评分'
-                    
-                    # 设置表头样式
-                    for cell in hdr_cells:
-                        cell.paragraphs[0].runs[0].bold = True
+
+
+            used_batches = result['x'] > 0.001
+            if np.any(used_batches):
+                recipe_data = selected_data[used_batches].copy()
+                proportions = result['x'][used_batches]
+                weights = proportions * st.session_state.total_mix_amount
+
+                # 创建表格
+                table = doc.add_table(rows=1, cols=4)
+                table.style = 'Table Grid'
+
+                # 表头
+                hdr_cells = table.rows[0].cells
+                hdr_cells[0].text = '批次编号'
+                hdr_cells[1].text = '推荐用量(克)'
+                hdr_cells[2].text = '混合比例(%)'
+                hdr_cells[3].text = '质量评分'
+
+                # 设置表头样式
+                for cell in hdr_cells:
+                    cell.paragraphs[0].runs[0].bold = True
+                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                # 添加数据行
+                for i, (batch_id, weight, prop, score) in enumerate(zip(
+                    recipe_data.index, weights, proportions, recipe_data['Rubric_Score']
+                )):
+                    row_cells = table.add_row().cells
+                    row_cells[0].text = str(batch_id)
+                    row_cells[1].text = f"{weight:.2f}"
+                    row_cells[2].text = f"{prop*100:.2f}%"
+                    row_cells[3].text = f"{score:.3f}"
+
+                    # 居中对齐
+                    for cell in row_cells:
                         cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    # 添加数据行
-                    for i, (batch_id, weight, prop, score) in enumerate(zip(
-                        recipe_data.index, weights, proportions, recipe_data['Rubric_Score']
-                    )):
-                        row_cells = table.add_row().cells
-                        row_cells[0].text = str(batch_id)
-                        row_cells[1].text = f"{weight:.2f}"
-                        row_cells[2].text = f"{prop*100:.2f}%"
-                        row_cells[3].text = f"{score:.3f}"
-                        
-                        # 居中对齐
-                        for cell in row_cells:
-                            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
                 else:
                     doc.add_paragraph("未找到有效的配方数据。")
             else:
                 doc.add_paragraph("优化结果无效，无法生成配方表。")
-            
+
             # 5. 优化结果汇总
             doc.add_heading('四、优化结果汇总', level=1)
-            
             summary_para = doc.add_paragraph()
+
             if st.session_state.current_mode == "成本最优":
-                summary_para.add_run(f"预期总成本：{(result.fun * st.session_state.total_mix_amount):.2f} 元\n")
+                summary_para.add_run(f"预期总成本：{(fun_value * st.session_state.total_mix_amount):.2f} 元\n")
             else:
+                # 兼容NSGA-II的偏差值和SLSQP的负分值
+                score_value = -fun_value if fun_value < 0 else fun_value
                 if st.session_state.drug_type == '甘草':
-                    ml_score = -result.fun
-                    summary_para.add_run(f"预期ML评分：{ml_score:.2f} 分 (1-10分制)\n")
+                    summary_para.add_run(f"预期ML评分/偏差：{score_value:.4f}\n")
                 else:
-                    quality_score = -result.fun
-                    summary_para.add_run(f"预期质量评分：{quality_score:.4f}\n")
-            
-            used_batches_count = len(np.where(result.x > 0.001)[0]) if result and 'x' in result else 0
+                    summary_para.add_run(f"预期质量评分/偏差：{score_value:.4f}\n")
+
+            used_batches_count = len(np.where(x_values > 0.001)[0])
             summary_para.add_run(f"实际使用批次数：{used_batches_count}\n")
-            total_inventory_used = np.sum(result.x * st.session_state.total_mix_amount) if result and 'x' in result else 0
+            total_inventory_used = np.sum(x_values * st.session_state.total_mix_amount)
             summary_para.add_run(f"总原料用量：{total_inventory_used:.2f} 克\n")
-            
+
             # 6. 约束达标情况
             doc.add_heading('五、约束指标达标情况', level=1)
             
