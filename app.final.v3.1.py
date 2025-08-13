@@ -1126,34 +1126,51 @@ def create_batch_quality_dashboard_chinese_robust(df, col_map, drug_type):
 
 # 修改主界面中的数据分析部分
 def update_analysis_dashboard():
-    """更新数据分析仪表板部分"""
+    """更新数据分析仪表板部分 (已修复和优化)"""
     st.markdown("---")
     with st.expander("📊 查看总数据分析仪表板", expanded=False):
         analysis_method = st.radio(
             "选择显示方式：",
-            ["智能检测（推荐）", "英文标签", "强制中文标签"],
+            ["智能检测（推荐）", "仅英文标签", "强制中文标签"],
             index=0,
-            help="智能检测会自动选择最适合的显示方式"
+            help="智能检测会优先尝试中文，失败则自动回退到英文"
         )
 
         if st.button("📈 生成数据分析报告", use_container_width=True, type="secondary"):
+            use_chinese_labels = False
+
+            # 首先判断是否需要使用中文
             if analysis_method == "智能检测（推荐）":
-                create_charts_with_chinese_fallback(st.session_state.df_processed,
-                                                    st.session_state.col_map,
-                                                    st.session_state.drug_type)
-            elif analysis_method == "英文标签":
+                font_success, _ = setup_chinese_fonts()
+                if font_success:
+                    use_chinese_labels = True
+                    st.success("✅ 中文字体加载成功，使用中文标签显示。")
+                else:
+                    st.warning("⚠️ 未找到可用中文字体，自动切换到英文标签显示。")
+            elif analysis_method == "强制中文标签":
+                font_success, _ = setup_chinese_fonts()
+                if font_success:
+                    use_chinese_labels = True
+                    st.success("✅ 强制使用中文标签显示。")
+                else:
+                    st.error("❌ 强制中文模式失败，无法加载中文字体，请选择其他模式。")
+                    return  # 强制失败则不生成图表
+
+            # 根据 `use_chinese_labels` 的值来调用图表函数
+            # 这样确保了无论是中文还是英文模式，两个图表都会被生成
+            if use_chinese_labels:
+                # 生成中文图表
+                create_batch_quality_dashboard_chinese(st.session_state.df_processed,
+                                                       st.session_state.col_map,
+                                                       st.session_state.drug_type)
+                create_ingredient_analysis_charts_chinese(st.session_state.df_processed,
+                                                          st.session_state.col_map,
+                                                          st.session_state.drug_type)
+            else:
+                # 生成英文图表
                 create_charts_with_english_labels(st.session_state.df_processed,
                                                   st.session_state.col_map,
                                                   st.session_state.drug_type)
-            else:  # 强制中文标签
-                font_success, _ = setup_robust_chinese_fonts()
-                if font_success:
-                    create_batch_quality_dashboard_chinese_robust(st.session_state.df_processed,
-                                                                  st.session_state.col_map,
-                                                                  st.session_state.drug_type)
-                else:
-                    st.error("❌ 无法加载中文字体，请选择其他显示方式")
-
 
 # 添加字体诊断功能
 def diagnose_font_issues():
@@ -1255,7 +1272,7 @@ def create_matplotlib_with_image_labels(data, title="图表标题"):
 
 
 def create_charts_with_english_labels(df, col_map, drug_type):
-    """使用英文标签创建图表，避免中文显示问题"""
+    """使用英文标签创建图表，避免中文显示问题 (已修复)"""
     st.subheader("📊 Batch Quality Analysis Dashboard")
     st.info("💡 因字体兼容性问题，图表标签暂时使用英文显示")
 
@@ -1274,7 +1291,7 @@ def create_charts_with_english_labels(df, col_map, drug_type):
     if drug_type == '甘草':
         gg_col = col_map.get('gg_g')
         ga_col = col_map.get('ga_g')
-        if gg_col and ga_col:
+        if gg_col and ga_col and gg_col in df.columns and ga_col in df.columns:
             scatter = axes[0, 1].scatter(df[gg_col], df[ga_col],
                                          c=df['Rubric_Score'], cmap='viridis',
                                          alpha=0.7, s=80, edgecolors='black')
@@ -1284,22 +1301,23 @@ def create_charts_with_english_labels(df, col_map, drug_type):
             plt.colorbar(scatter, ax=axes[0, 1], label='Quality Score')
 
     # 3. Top 10 Batches
-    top_10 = df.nlargest(10, 'Rubric_Score')
-    bars = axes[0, 2].bar(range(len(top_10)), top_10['Rubric_Score'],
-                          color='green', alpha=0.7, edgecolor='black')
-    axes[0, 2].set_title('Top 10 Batch Quality Scores', fontsize=18)
-    axes[0, 2].set_xlabel('Batch Rank', fontsize=16)
-    axes[0, 2].set_ylabel('Quality Score', fontsize=16)
+    if 'Rubric_Score' in df.columns:
+        top_10 = df.nlargest(10, 'Rubric_Score')
+        bars = axes[0, 2].bar(range(len(top_10)), top_10['Rubric_Score'],
+                              color='green', alpha=0.7, edgecolor='black')
+        axes[0, 2].set_title('Top 10 Batch Quality Scores', fontsize=18)
+        axes[0, 2].set_xlabel('Batch Rank', fontsize=16)
+        axes[0, 2].set_ylabel('Quality Score', fontsize=16)
 
-    # 添加数值标注
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        axes[0, 2].text(bar.get_x() + bar.get_width() / 2., height + 0.01,
-                        f'{height:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
+        # 添加数值标注
+        for i, bar in enumerate(bars):
+            height = bar.get_height()
+            axes[0, 2].text(bar.get_x() + bar.get_width() / 2., height + 0.01,
+                            f'{height:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
 
     # 4. Cost-Benefit Analysis
     cost_col = col_map.get('cost', '模拟成本')
-    if cost_col in df.columns:
+    if cost_col in df.columns and 'Rubric_Score' in df.columns:
         axes[1, 0].scatter(df[cost_col], df['Rubric_Score'],
                            alpha=0.7, s=80, color='orange', edgecolors='black')
         axes[1, 0].set_title('Cost vs Quality Analysis', fontsize=18)
@@ -1353,6 +1371,10 @@ def create_charts_with_english_labels(df, col_map, drug_type):
     """)
 
     st.pyplot(fig)
+    plt.close(fig) # 关闭图形，防止内存泄漏
+
+    # --- 新增部分：调用成分分析图表 ---
+    create_ingredient_analysis_charts(df, col_map, drug_type, use_chinese=False)
 
 
 # --- 核心库导入 ---
